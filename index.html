@@ -2469,6 +2469,61 @@ function isNonDistrictOpportunity(h){
          .some(term => blob.includes(term));
 }
 
+// ── Layer 2: research-body exclusion ──────────────────────────────────────
+// NIH and peer biomedical institutes list "Independent school districts" as an
+// eligible applicant type on broad funding opportunities, so eligibility code
+// 05 alone lets them through. They fund biomedical/clinical research, not TK-12
+// district operations. Detected structurally, not by topic keywords:
+//
+//   1. Agency code — NIH institutes appear as HHS-NIH11, NIDA, NCI, etc.
+//   2. Opportunity-number prefix — NIH FOAs are PA-, PAR-, RFA-, NOSI-, NOT-.
+//      (ED uses ED-GRANTS-…, NSF uses PD-/NSF-, CDC uses CDC-RFA-… — no clash.)
+//   3. NIH activity code in the title, e.g. "(R34 Clinical Trial Required)",
+//      "(P20 Clinical Trial Not Allowed)", "(U34 …)" — this alone catches all
+//      three examples reported.
+//   4. NIH clinical-trial boilerplate in the title.
+//   5. SBIR/STTR small-business research programs.
+const NIH_INSTITUTE_CODES =
+  /\b(NIH|NIAAA|NIDA|NIMH|NCI|NHLBI|NIAID|NINR|NIGMS|NICHD|NIEHS|NINDS|NIDCR|NIDDK|NIMHD|NCATS|NCCIH|NHGRI|NIBIB|NIDCD|NIAMS|NEI|NIA|FIC|NLM|AHRQ)\b/i;
+
+// NSF splits research vs. education by ALN (CFDA). 47.076 is the Directorate
+// for STEM Education — DRK-12, ITEST, Noyce, the programs districts actually
+// use. Every other 47.xxx is a research directorate (engineering, geosciences,
+// biology, CISE…). So NSF hits are kept only when 47.076 is present.
+const NSF_STEM_EDUCATION_ALN = '47.076';
+
+function isResearchOnlyOpportunity(h){
+  const code   = String(h.agencyCode || '');
+  const agency = String(h.agency || h.agencyName || '');
+  const number = String(h.number || '');
+  const title  = String(h.title  || '');
+  const alns   = h.cfdaList || h.alnist || [];
+
+  // 1. NIH / biomedical institute agency codes
+  if (NIH_INSTITUTE_CODES.test(code)) return true;
+  if (/national institutes of health|agency for healthcare research/i.test(agency)) return true;
+
+  // 2. NIH funding-opportunity-number prefixes
+  if (/^(PAR|PA|RFA|NOSI|NOT)-/i.test(number)) return true;
+
+  // 3. NIH activity code in title — "(R34 …)", "(P20 …)", "(U34 …)"
+  if (/\((?:R|P|U|K|T|F|DP)\d{2}\b[^)]*\)/i.test(title)) return true;
+
+  // 4. NIH clinical-trial boilerplate
+  if (/clinical trial (required|optional|not allowed)/i.test(title)) return true;
+
+  // 5. Small-business research programs — districts cannot apply
+  if (/\b(SBIR|STTR)\b/i.test(title + ' ' + number)) return true;
+
+  // 6. NSF: keep only STEM Education directorate (ALN 47.076)
+  if (/^NSF/i.test(code) || /national science foundation/i.test(agency)) {
+    const isStemEd = alns.some(a => String(a).indexOf(NSF_STEM_EDUCATION_ALN) === 0);
+    if (!isStemEd) return true;
+  }
+
+  return false;
+}
+
 async function fetchGrantsGovLive(goal, needs, listEl){
   const section = document.createElement('div');
   section.id = 'live-federal-section';
@@ -2588,20 +2643,35 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       throw new Error('No hits had usable numeric opportunity IDs');
     }
 
-    // ── Relevance filter: drop overseas / non-district opportunities ────────
-    const beforeFilter = validHits.length;
-    const dropped      = validHits.filter(h => isNonDistrictOpportunity(h));
-    const districtHits = validHits.filter(h => !isNonDistrictOpportunity(h));
+    // ── Relevance filtering, applied in two separately-reported layers ──────
+    const logDrop = (h, why) => console.log('[TMW]   x dropped [' + why + ']:',
+      h.number || h.id, '|', h.agencyCode || '', '|', (h.title || '').slice(0, 65));
 
-    console.log('[TMW] ── Relevance filter ──');
+    console.log('[TMW] -- Filtering --');
     console.log('[TMW] eligibilities sent:', ELIGIBILITY_CODES, '(05 = Independent school districts)');
-    console.log('[TMW] Results BEFORE district filter:', beforeFilter);
-    console.log('[TMW] Results AFTER  district filter:', districtHits.length);
-    console.log('[TMW] Dropped as non-district:', dropped.length);
-    if (dropped.length) {
-      dropped.forEach(h => console.log('[TMW]   ✗ dropped:', h.number || h.id, '|',
-        h.agencyCode || '', '|', (h.title || '').slice(0, 70)));
-    }
+    console.log('[TMW] API returned (valid IDs):', validHits.length);
+
+    // Layer 1 - overseas / State Dept programs
+    const L1_before = validHits.length;
+    const L1_drop   = validHits.filter(h => isNonDistrictOpportunity(h));
+    const afterL1   = validHits.filter(h => !isNonDistrictOpportunity(h));
+    console.log('[TMW] Layer 1 (overseas / State Dept): ' + L1_before + ' -> ' + afterL1.length +
+                '   (removed ' + L1_drop.length + ')');
+    L1_drop.forEach(h => logDrop(h, 'overseas'));
+
+    // Layer 2 - biomedical / research-only bodies (NIH, SBIR, NSF non-education)
+    const L2_before    = afterL1.length;
+    const L2_drop      = afterL1.filter(h => isResearchOnlyOpportunity(h));
+    const districtHits = afterL1.filter(h => !isResearchOnlyOpportunity(h));
+    console.log('[TMW] Layer 2 (research-only agencies): ' + L2_before + ' -> ' + districtHits.length +
+                '   (removed ' + L2_drop.length + ')');
+    L2_drop.forEach(h => logDrop(h, 'research'));
+
+    console.log('[TMW] NET: ' + validHits.length + ' returned -> ' + districtHits.length +
+                ' district-relevant  (removed ' + (L1_drop.length + L2_drop.length) + ' total)');
+
+    const beforeFilter = validHits.length;
+    const dropped      = L1_drop.concat(L2_drop);
     // Empirical check of the code labels — the API returns its own facet list.
     if (data.data && data.data.eligibilities && data.data.eligibilities.length) {
       console.log('[TMW] Eligibility facets returned by API (verify labels here):',
