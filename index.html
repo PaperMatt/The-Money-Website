@@ -1482,6 +1482,11 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 }
 .live-nomatch-title { font-weight:700; font-size:.9rem; color:var(--navy); margin-bottom:.5rem; }
 .live-nomatch-text  { font-size:.84rem; color:var(--gray-600); line-height:1.65; margin-bottom:1rem; }
+.eligibility-notice {
+  background:#fffbeb; border:1px solid #fde68a; border-radius:8px;
+  padding:.7rem .95rem; margin-bottom:1rem; font-size:.8rem;
+  color:#92400e; line-height:1.6;
+}
 </style>
 </head>
 <body>
@@ -2617,28 +2622,56 @@ async function fetchGrantsGovLive(goal, needs, listEl){
   console.log('[TMW] POST /api/grants (server-side proxy -> api.grants.gov/v1/api/search2)');
 
   let lastDeepLink = buildGrantsGovDeepLink(keywords[0]);
+  let usedShape = null;
   let lastRawCount = 0;
   let lastL1 = 0, lastL2 = 0;
   let parseError = null, rawResponse = null, data = null;
 
   try {
-    for (let attempt = 0; attempt < keywords.length; attempt++) {
-      const keyword = keywords[attempt];
-      lastDeepLink  = buildGrantsGovDeepLink(keyword);
+    // ── Query-shape ladder ────────────────────────────────────────────────
+    // Live diagnostic (TMW_diagnose) on "career technical education" showed:
+    //   cat ED + elig 05  -> 25 results, 0 usable, agency mix 100% HHS
+    //   cat ED, no elig   -> 60 results, 13 usable
+    //   keyword only      -> 60 results, 31 usable
+    // Eligibility 05 was excluding nearly every genuine ED grant, because most
+    // federal education grants name the STATE agency as applicant or use
+    // "Others"/"Unrestricted" - while NIH DOES tag 05 on broad announcements.
+    // We still TRY the strict shape first and only loosen when it returns
+    // nothing, so precision is preferred and breadth is the fallback.
+    const SHAPES = [
+      { id:'strict',   label:'category ED + eligibility 05',
+        extra:{ fundingCategories:'ED', eligibilities: ELIGIBILITY_CODES } },
+      { id:'category', label:'category ED, no eligibility filter',
+        extra:{ fundingCategories:'ED' } },
+      { id:'broad',    label:'keyword only, no category/eligibility',
+        extra:{} },
+    ];
+    // First keyword against each shape, then the broadest shape with the
+    // second keyword. Capped so a search never exceeds 4 requests.
+    const attempts = [
+      { keyword: keywords[0], shape: SHAPES[0] },
+      { keyword: keywords[0], shape: SHAPES[1] },
+      { keyword: keywords[0], shape: SHAPES[2] },
+    ];
+    if (keywords[1]) attempts.push({ keyword: keywords[1], shape: SHAPES[2] });
 
-      const requestBody = {
+    for (let attempt = 0; attempt < attempts.length; attempt++) {
+      const keyword   = attempts[attempt].keyword;
+      const shape     = attempts[attempt].shape;
+      usedShape       = shape;
+      lastDeepLink    = buildGrantsGovDeepLink(keyword);
+
+      const requestBody = Object.assign({
         keyword,
-        oppStatuses:      'posted',
-        fundingCategories:'ED',
-        eligibilities:    ELIGIBILITY_CODES,
-        rows:             LIVE_SEARCH_ROWS,
-        startRecordNum:   0
-      };
+        oppStatuses:    'posted',
+        rows:           LIVE_SEARCH_ROWS,
+        startRecordNum: 0
+      }, shape.extra);
       // Only send agencies if a verified-working value is ever set (see note above)
       if (DISTRICT_AGENCY_CODES) requestBody.agencies = DISTRICT_AGENCY_CODES;
 
-      console.log('[TMW] ── Attempt ' + (attempt+1) + '/' + keywords.length +
-                  ' — keyword: "' + keyword + '" ──');
+      console.log('[TMW] ── Attempt ' + (attempt+1) + '/' + attempts.length +
+                  ' — keyword: "' + keyword + '" | shape: ' + shape.label + ' ──');
       console.log('[TMW] Request body:', JSON.stringify(requestBody));
 
       const t0 = Date.now();
@@ -2698,8 +2731,9 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       lastL2 = L2_drop.length;
 
       if (!districtHits.length) {
-        if (attempt < keywords.length - 1) {
-          console.log('[TMW] 0 district-relevant results — broadening keyword and retrying…');
+        if (attempt < attempts.length - 1) {
+          console.log('[TMW] 0 district-relevant results with shape "' + shape.id +
+                      '" — loosening query shape and retrying…');
           continue;
         }
         break; // ladder exhausted -> honest empty state below
@@ -2709,15 +2743,28 @@ async function fetchGrantsGovLive(goal, needs, listEl){
 
       // ── Success ──────────────────────────────────────────────────────────
       console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', districtHits.length,
-                  'district-relevant results (keyword: "' + keyword + '")');
+                  'district-relevant results (keyword: "' + keyword +
+                  '", shape: ' + shape.id + ')');
       const deepLink = lastDeepLink;
       document.getElementById('live-badge').textContent = '🟢 LIVE';
       document.getElementById('live-header-label').textContent =
         'Federal Grants — Live from Grants.gov';
-      document.getElementById('live-status').textContent =
-        `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`;
+      // Only the strict shape actually filters on school-district eligibility.
+      // If we loosened to get results, say so plainly rather than implying
+      // these were verified as district-eligible.
+      const verified = shape.id === 'strict';
+      document.getElementById('live-status').textContent = verified
+        ? `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`
+        : `${districtHits.length} federal opportunit${districtHits.length === 1 ? 'y' : 'ies'} — verify eligibility`;
+      const noticeHtml = verified ? '' : `
+        <div class="eligibility-notice">
+          <strong>Eligibility not pre-filtered.</strong> No results matched a
+          school-district-only eligibility filter, so this is a broader
+          education search. Confirm your district qualifies on the official
+          listing before investing time in an application.
+        </div>`;
 
-    document.getElementById('live-results-inner').innerHTML =
+    document.getElementById('live-results-inner').innerHTML = noticeHtml +
       districtHits.slice(0, 12).map(h => {
         // Confirmed date format: "10/11/2023" (MM/DD/YYYY)
         // Parse safely — new Date("10/11/2023") works cross-browser for this format
