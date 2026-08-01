@@ -3009,6 +3009,86 @@ window.TMW_diagnose = async function(goal){
   return rows;
 };
 
+
+// ── Cross-category audit ──────────────────────────────────────────────────
+// Run on the live site:  TMW_audit()
+// Runs several funding goals through the real ladder and prints ONE copyable
+// text block showing exactly which grants would display for each goal, plus a
+// duplicate report. Designed to diagnose (a) irrelevant results and (b) the
+// same grant appearing under multiple categories.
+// After it finishes:  copy(TMW_lastReport)   <- puts the report on your clipboard
+window.TMW_audit = async function(goals){
+  const list = goals || ['STEM','School Safety','Special Education',
+                         'Career and Technical Education','Arts','Mental Health'];
+  const lines = [];
+  const seen  = {};   // grant id -> [goals it appeared under]
+  const say   = (s) => { lines.push(s); };
+
+  say('===== TMW LIVE GRANT AUDIT =====');
+  say('generated: ' + new Date().toISOString());
+
+  for (const goal of list) {
+    const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal];
+    const keywords = Array.isArray(ladder) ? ladder : [ladder];
+    const shapes = [
+      { id:'category', extra:{ fundingCategories:'ED' } },
+      { id:'broad',    extra:{} },
+    ];
+    let done = false;
+    for (const kw of [keywords[0], keywords[1]].filter(Boolean)) {
+      for (const sh of shapes) {
+        if (done) break;
+        try {
+          const body = Object.assign({ keyword:kw, oppStatuses:'posted',
+                        rows: LIVE_SEARCH_ROWS, startRecordNum:0 }, sh.extra);
+          const r = await fetch('/api/grants', { method:'POST',
+                      headers:{'Content-Type':'application/json'},
+                      body: JSON.stringify(body) });
+          const d = await r.json();
+          const hits  = (d.data && d.data.oppHits) || [];
+          const valid = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
+          const keep  = valid.filter(h => !isNonDistrictOpportunity(h)
+                                       && !isResearchOnlyOpportunity(h));
+          if (!keep.length) continue;
+          done = true;
+          say('');
+          say('--- ' + goal + ' ---');
+          say('keyword: "' + kw + '"  shape: ' + sh.id +
+              '  raw:' + ((d.data&&d.data.hitCount)||0) +
+              '  returned:' + valid.length + '  shown:' + Math.min(keep.length,12));
+          keep.slice(0,12).forEach(h => {
+            const code = (h.agencyCode||'?');
+            say('   ' + code.padEnd(12).slice(0,12) + ' | ' +
+                String(h.title||'').slice(0,72));
+            (seen[h.id] = seen[h.id] || { title:h.title, goals:[] }).goals.push(goal);
+          });
+        } catch(e) { say('   ERROR: ' + e.message); }
+      }
+      if (done) break;
+    }
+    if (!done) { say(''); say('--- ' + goal + ' ---'); say('   (no results)'); }
+  }
+
+  // duplicate report
+  const dupes = Object.entries(seen).filter(([,v]) => v.goals.length > 1);
+  say('');
+  say('===== GRANTS APPEARING IN MULTIPLE CATEGORIES =====');
+  if (!dupes.length) say('   none');
+  dupes.forEach(([id,v]) => {
+    say('   [' + v.goals.length + 'x] ' + String(v.title).slice(0,64));
+    say('        goals: ' + v.goals.join(', '));
+  });
+  say('');
+  say('===== END =====');
+
+  const report = lines.join('\n');
+  window.TMW_lastReport = report;
+  console.log(report);
+  console.log('%cRun  copy(TMW_lastReport)  to put this on your clipboard.',
+              'font-weight:bold');
+  return report;
+};
+
 /* ── DRAFT PAGE DATA ──────────────────────────────────────────── */
 const DP_SECTIONS=[
   {id:'exec', num:1, name:'Executive Summary',    hint:'~150 words'},
