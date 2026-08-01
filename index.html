@@ -1483,9 +1483,9 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 .live-nomatch-title { font-weight:700; font-size:.9rem; color:var(--navy); margin-bottom:.5rem; }
 .live-nomatch-text  { font-size:.84rem; color:var(--gray-600); line-height:1.65; margin-bottom:1rem; }
 .eligibility-notice {
-  background:#fffbeb; border:1px solid #fde68a; border-radius:8px;
-  padding:.7rem .95rem; margin-bottom:1rem; font-size:.8rem;
-  color:#92400e; line-height:1.6;
+  background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px;
+  padding:.65rem .9rem; margin-bottom:1rem; font-size:.78rem;
+  color:var(--gray-600); line-height:1.6;
 }
 </style>
 </head>
@@ -2464,6 +2464,18 @@ const GRANTSGOV_KEYWORD_MAP={
 //
 // Declared at module scope so both fetchGrantsGovLive() and the
 // TMW_testKeywords() console harness can read it.
+// ── Eligibility code 05: RETIRED from the live search ─────────────────────
+// Tested on three categories with TMW_diagnose. Every one returned 0 usable
+// results and an agency mix that was ~100% NIH:
+//    Career & Technical Ed :  25 raw ->  0 usable  (HHS:25)
+//    School Safety         :   5 raw ->  0 usable  (HHS:5)
+//    Special Education     :   5 raw ->  0 usable  (HHS:5)
+// Cause: most federal education grants name the STATE education agency as
+// applicant, or use "Others"/"Unrestricted" - they do not tag 05. NIH DOES
+// tag 05 on broad announcements. So the filter screened out genuine ED grants
+// while admitting NIH: the opposite of its intent.
+// Removing it took Special Education from 0 to 15 usable results.
+// Kept as a constant ONLY so TMW_diagnose can keep testing shape A.
 const ELIGIBILITY_CODES = '05';
 
 // ── Agency filtering: DISABLED at the API level (tested, does not work) ────
@@ -2639,21 +2651,20 @@ async function fetchGrantsGovLive(goal, needs, listEl){
     // We still TRY the strict shape first and only loosen when it returns
     // nothing, so precision is preferred and breadth is the fallback.
     const SHAPES = [
-      { id:'strict',   label:'category ED + eligibility 05',
-        extra:{ fundingCategories:'ED', eligibilities: ELIGIBILITY_CODES } },
       { id:'category', label:'category ED, no eligibility filter',
         extra:{ fundingCategories:'ED' } },
-      { id:'broad',    label:'keyword only, no category/eligibility',
+      { id:'broad',    label:'keyword only, no category filter',
         extra:{} },
     ];
-    // First keyword against each shape, then the broadest shape with the
-    // second keyword. Capped so a search never exceeds 4 requests.
+    // Eligibility 05 was removed after testing it on three categories
+    // (see note above ELIGIBILITY_CODES). Ladder is now 2 shapes x 2 keywords,
+    // capped at 4 requests, narrowest first.
     const attempts = [
       { keyword: keywords[0], shape: SHAPES[0] },
       { keyword: keywords[0], shape: SHAPES[1] },
-      { keyword: keywords[0], shape: SHAPES[2] },
     ];
-    if (keywords[1]) attempts.push({ keyword: keywords[1], shape: SHAPES[2] });
+    if (keywords[1]) attempts.push({ keyword: keywords[1], shape: SHAPES[0] });
+    if (keywords[1]) attempts.push({ keyword: keywords[1], shape: SHAPES[1] });
 
     for (let attempt = 0; attempt < attempts.length; attempt++) {
       const keyword   = attempts[attempt].keyword;
@@ -2749,19 +2760,16 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       document.getElementById('live-badge').textContent = '🟢 LIVE';
       document.getElementById('live-header-label').textContent =
         'Federal Grants — Live from Grants.gov';
-      // Only the strict shape actually filters on school-district eligibility.
-      // If we loosened to get results, say so plainly rather than implying
-      // these were verified as district-eligible.
-      const verified = shape.id === 'strict';
-      document.getElementById('live-status').textContent = verified
-        ? `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`
-        : `${districtHits.length} federal opportunit${districtHits.length === 1 ? 'y' : 'ies'} — verify eligibility`;
-      const noticeHtml = verified ? '' : `
+      // Eligibility is no longer pre-filtered by the API (code 05 was retired
+      // - see note above). Every live result therefore needs district
+      // verification, so the notice is always shown rather than conditionally.
+      document.getElementById('live-status').textContent =
+        `${districtHits.length} federal opportunit${districtHits.length === 1 ? 'y' : 'ies'} — verify eligibility`;
+      const noticeHtml = `
         <div class="eligibility-notice">
-          <strong>Eligibility not pre-filtered.</strong> No results matched a
-          school-district-only eligibility filter, so this is a broader
-          education search. Confirm your district qualifies on the official
-          listing before investing time in an application.
+          Eligibility is not pre-filtered. These are current federal education
+          grants with overseas and biomedical-research programs removed - confirm
+          your district qualifies on the official listing before applying.
         </div>`;
 
     document.getElementById('live-results-inner').innerHTML = noticeHtml +
