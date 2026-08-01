@@ -2461,21 +2461,20 @@ const GRANTSGOV_KEYWORD_MAP={
 // TMW_testKeywords() console harness can read it.
 const ELIGIBILITY_CODES = '05';
 
-// ── Agency allowlist, applied AT THE API LEVEL ────────────────────────────
-// Empirical finding from live testing: with only a category+eligibility
-// filter, NIH occupied all 20 returned rows while raw hitCount was 25-59.
-// Genuine Dept-of-Education grants sat at position 21+ and were never
-// downloaded, so client-side filtering could only ever return zero.
-// Asking the API for these agencies is a TIGHTENING, not a loosening - the
-// eligibility code and both client-side exclusion layers are unchanged.
-//   ED    Education        USDA  school nutrition    DOJ  school safety
-//   EPA   Clean School Bus IMLS  libraries           DOT  Safe Routes
-//   FCC   E-Rate           NSF   STEM ed (ALN 47.076 kept by Layer 2)
-//   HHS   ACF/Head Start + CDC school health (NIH still stripped by Layer 2)
-const DISTRICT_AGENCY_CODES = 'ED|USDA|DOJ|EPA|IMLS|DOT|FCC|NSF|HHS';
+// ── Agency filtering: DISABLED at the API level (tested, does not work) ────
+// Tested live 'ED|USDA|DOJ|EPA|IMLS|DOT|FCC|NSF|HHS'. Result: hitCount went
+// to 0 on every query. A "school safety" search that returned 5 NIH grants
+// (agencyCode HHS-NIH11) returned 0 with 'HHS' in the allowlist - proving the
+// agencies parameter requires EXACT full agency codes (HHS-NIH11, USDOJ-COPS,
+// USDA-FNS...), not top-level prefixes. Those sub-codes cannot be reliably
+// enumerated, so agency selection stays client-side in Layers 1 and 2.
+// Left as an empty string; the parameter is omitted from the request entirely.
+const DISTRICT_AGENCY_CODES = '';
 
-// Rows raised 20 -> 60 so a single crowded agency cannot monopolise the page
-// before our filters run.
+// Rows raised 20 -> 60. THIS is the fix for agency crowding: raw hitCount was
+// 25-59 while only 20 rows were fetched, so NIH filled the page and genuine
+// Dept-of-Education grants at position 21+ were never downloaded. Fetching 60
+// lets the client-side filters actually see them.
 const LIVE_SEARCH_ROWS = 60;
 
 function buildGrantsGovDeepLink(keyword){
@@ -2632,10 +2631,11 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         oppStatuses:      'posted',
         fundingCategories:'ED',
         eligibilities:    ELIGIBILITY_CODES,
-        agencies:         DISTRICT_AGENCY_CODES,
         rows:             LIVE_SEARCH_ROWS,
         startRecordNum:   0
       };
+      // Only send agencies if a verified-working value is ever set (see note above)
+      if (DISTRICT_AGENCY_CODES) requestBody.agencies = DISTRICT_AGENCY_CODES;
 
       console.log('[TMW] ── Attempt ' + (attempt+1) + '/' + keywords.length +
                   ' — keyword: "' + keyword + '" ──');
@@ -2879,7 +2879,7 @@ window.TMW_testKeywords = async function(goal, customKeywords){
       const r = await fetch('/api/grants', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ keyword, oppStatuses:'posted', fundingCategories:'ED',
-                               eligibilities: ELIGIBILITY_CODES, agencies: DISTRICT_AGENCY_CODES,
+                               eligibilities: ELIGIBILITY_CODES,
                                rows: LIVE_SEARCH_ROWS, startRecordNum:0 })
       });
       const d = await r.json();
@@ -2915,20 +2915,18 @@ window.TMW_diagnose = async function(goal){
   console.log('[TMW-DIAG] goal:', goal, '| keyword:', keyword);
 
   const shapes = [
-    { name:'A current (cat ED + elig 05 + agencies)',
-      body:{ keyword, oppStatuses:'posted', fundingCategories:'ED',
-             eligibilities:ELIGIBILITY_CODES, agencies:DISTRICT_AGENCY_CODES, rows:60 } },
-    { name:'B no agency filter',
+    { name:'A current (cat ED + elig 05, rows 60)',
       body:{ keyword, oppStatuses:'posted', fundingCategories:'ED',
              eligibilities:ELIGIBILITY_CODES, rows:60 } },
-    { name:'C elig 05|00 (adds State govts)',
+    { name:'B elig 05|00 (adds State govts)',
       body:{ keyword, oppStatuses:'posted', fundingCategories:'ED',
-             eligibilities:'05|00', agencies:DISTRICT_AGENCY_CODES, rows:60 } },
-    { name:'D no eligibility filter',
-      body:{ keyword, oppStatuses:'posted', fundingCategories:'ED',
-             agencies:DISTRICT_AGENCY_CODES, rows:60 } },
-    { name:'E Dept of Education only, no filters',
-      body:{ keyword, oppStatuses:'posted', agencies:'ED', rows:60 } },
+             eligibilities:'05|00', rows:60 } },
+    { name:'C no eligibility filter',
+      body:{ keyword, oppStatuses:'posted', fundingCategories:'ED', rows:60 } },
+    { name:'D no category filter (elig 05 only)',
+      body:{ keyword, oppStatuses:'posted', eligibilities:ELIGIBILITY_CODES, rows:60 } },
+    { name:'E keyword only, no filters at all',
+      body:{ keyword, oppStatuses:'posted', rows:60 } },
   ];
 
   const rows = [];
