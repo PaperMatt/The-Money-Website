@@ -2440,6 +2440,27 @@ const GRANTSGOV_KEYWORD_MAP={
   'Career and Technical Education':['career technical education', 'career education', 'workforce development'],
 };
 
+// ── Eligibility filter ────────────────────────────────────────────────────
+// Grants.gov eligibility codes (the search2 docs confirm this numbering by
+// showing {"label":"County governments","value":"01"} in the response facet):
+//   00 State governments            01 County governments
+//   02 City or township govts       04 Special district governments
+//   05 INDEPENDENT SCHOOL DISTRICTS 06 Public/State-controlled higher ed
+//   12 Nonprofits w/ 501(c)(3)      20 Private higher ed
+//   21 Individuals                  25 "Others"      99 Unrestricted
+//
+// We use 05 alone. A TK-12 district is an LEA, and any federal opportunity a
+// district may apply for lists 05 among its eligibilities — the filter is an
+// OR match, so 05 captures all of them without padding the list.
+//
+// Deliberately EXCLUDED: 06/20 (higher ed) pulled in university research such
+// as NIH clinical trials; 25 ("Others") is the bucket the State Dept embassy
+// programs sit in. Those two codes were the source of the noise.
+//
+// Declared at module scope so both fetchGrantsGovLive() and the
+// TMW_testKeywords() console harness can read it.
+const ELIGIBILITY_CODES = '05';
+
 function buildGrantsGovDeepLink(keyword){
   // Verified working: /search-grants?keyword=X&oppStatuses=posted
   // (fetched directly against grants.gov — confirmed 200 response)
@@ -2778,6 +2799,9 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         msg.toLowerCase().includes('blocked')) reason = 'CORS_BLOCK';
     else if (msg.toLowerCase().includes('http')) reason = 'HTTP_ERROR';
     else if (parseError) reason = 'PARSE_ERROR';
+    // A ReferenceError/TypeError is a bug in this file, not a network problem.
+    // Surfacing it distinctly stops it from masquerading as UNKNOWN.
+    else if (err instanceof ReferenceError || err instanceof TypeError) reason = 'CODE_ERROR';
 
     console.warn('[TMW] ✗ LIVE FETCH FAILED');
     console.warn('[TMW] Failure reason code:', reason);
@@ -2786,6 +2810,10 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       console.warn('[TMW] On the deployed Vercel site this should NOT happen — the request');
       console.warn('[TMW] goes to the same-origin /api/grants proxy. Check the Vercel');
       console.warn('[TMW] dashboard -> your project -> Functions tab that api/grants deployed.');
+    }
+    if (reason === 'CODE_ERROR') {
+      console.error('[TMW] This is a JavaScript bug in index.html, not a network issue.');
+      console.error('[TMW] Stack:', err && err.stack);
     }
 
     const deepLink = lastDeepLink;
@@ -2801,6 +2829,8 @@ async function fetchGrantsGovLive(goal, needs, listEl){
             ? 'The live grant search service could not be reached. If you are viewing this as a local file, this is expected — the deployed site on Vercel includes the server function that makes live search work.'
             : reason === 'HTTP_ERROR'
             ? 'The Grants.gov API returned an error: ' + msg
+            : reason === 'CODE_ERROR'
+            ? 'A script error prevented the live search from running: ' + msg
             : reason === 'PARSE_ERROR'
             ? 'The API response could not be parsed: ' + msg
             : 'Reason: ' + msg}
