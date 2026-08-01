@@ -2419,19 +2419,25 @@ function renderResults(goal,district,state,students,needs,amount){
 
 /* ── LIVE GRANTS.GOV FEDERAL SEARCH ──────────────────────────── */
 // Maps funding goals to Grants.gov search keywords
+// Keyword LADDERS, ordered narrow -> broad. search2 appears to AND multiple
+// terms, so every extra word shrinks the result set. Previous values were 3-5
+// words ("career technical education CTE Perkins"), which over-constrained the
+// query before any of our filters even ran. Each entry now starts with the
+// canonical federal program phrasing and falls back to broader single concepts.
+// Only the KEYWORD widens here — eligibility 05 and agency exclusions never do.
 const GRANTSGOV_KEYWORD_MAP={
-  'STEM':'STEM education school district',
-  'School Safety':'school safety violence prevention',
-  'Technology':'educational technology schools',
-  'Aspiring Teacher Pathways':'teacher pipeline educator preparation',
-  'New Teacher Development':'teacher induction mentoring',
-  'Professional Development':'teacher professional development',
-  'Special Education':'special education IDEA disability',
-  'Athletics':'physical education sports schools',
-  'Arts':'arts education K-12',
-  'Infrastructure':'school facilities construction renovation',
-  'Mental Health':'school mental health student wellness',
-  'Career and Technical Education':'career technical education CTE Perkins',
+  'STEM':                          ['STEM education', 'STEM', 'science education'],
+  'School Safety':                 ['school safety', 'school violence prevention', 'student safety'],
+  'Technology':                    ['educational technology', 'school technology', 'digital learning'],
+  'Aspiring Teacher Pathways':     ['teacher preparation', 'teacher pipeline', 'educator recruitment'],
+  'New Teacher Development':       ['teacher induction', 'teacher mentoring', 'teacher development'],
+  'Professional Development':      ['professional development teachers', 'educator development', 'teacher training'],
+  'Special Education':             ['special education', 'students with disabilities', 'disability'],
+  'Athletics':                     ['physical education', 'youth sports', 'physical activity'],
+  'Arts':                          ['arts education', 'arts in education', 'arts'],
+  'Infrastructure':                ['school facilities', 'school construction', 'school infrastructure'],
+  'Mental Health':                 ['school mental health', 'student mental health', 'youth mental health'],
+  'Career and Technical Education':['career technical education', 'career education', 'workforce development'],
 };
 
 function buildGrantsGovDeepLink(keyword){
@@ -2524,7 +2530,29 @@ function isResearchOnlyOpportunity(h){
   return false;
 }
 
+// ── Single-flight guard ───────────────────────────────────────────────────
+// Each search previously appended a new #live-federal-section, so changing the
+// funding goal stacked loading blocks (and created duplicate element IDs).
+// We now remove the prior section, abort the prior request, and stamp each run
+// with a sequence number so a superseded run can never write to the DOM.
+let liveSearchController = null;
+let liveSearchSeq = 0;
+
 async function fetchGrantsGovLive(goal, needs, listEl){
+  // 1. Cancel any in-flight request from a previous search
+  if (liveSearchController) {
+    console.log('[TMW] Superseding previous live search - aborting in-flight request');
+    liveSearchController.abort();
+  }
+  liveSearchController = new AbortController();
+  const signal = liveSearchController.signal;
+  const mySeq  = ++liveSearchSeq;
+  const isStale = () => mySeq !== liveSearchSeq;
+
+  // 2. Remove any existing loading/results block so only one ever exists
+  const existing = document.getElementById('live-federal-section');
+  if (existing) existing.remove();
+
   const section = document.createElement('div');
   section.id = 'live-federal-section';
   section.style.cssText = 'margin-top:2rem;';
@@ -2539,176 +2567,116 @@ async function fetchGrantsGovLive(goal, needs, listEl){
     </div>`;
   listEl.parentElement.appendChild(section);
 
-  const keyword   = GRANTSGOV_KEYWORD_MAP[goal] || (goal + ' K-12 school district');
-  const deepLink  = buildGrantsGovDeepLink(keyword);
-  // ── Eligibility filter ──────────────────────────────────────────────────
-  // Grants.gov eligibility codes (the search2 docs confirm this numbering by
-  // showing {"label":"County governments","value":"01"} in the response facet):
-  //   00 State governments            01 County governments
-  //   02 City or township govts       04 Special district governments
-  //   05 INDEPENDENT SCHOOL DISTRICTS 06 Public/State-controlled higher ed
-  //   12 Nonprofits w/ 501(c)(3)      20 Private higher ed
-  //   21 Individuals                  25 "Others"      99 Unrestricted
-  //
-  // We use 05 alone. A TK-12 district is an LEA, and any federal opportunity
-  // a district may apply for lists 05 among its eligibilities — the filter is
-  // an OR match, so 05 captures all of them without padding the list.
-  //
-  // Deliberately EXCLUDED: 06/20 (higher ed) pulled in university research
-  // like NIH clinical trials; 25 ("Others") is the bucket the State Dept
-  // embassy programs sit in. Those two were the source of the noise.
-  //
-  // If results are ever too sparse, add State governments with '05|00' —
-  // that surfaces SEA-administered programs districts receive as subgrants.
-  const ELIGIBILITY_CODES = '05';
-
-  const requestBody = {
-    keyword,
-    oppStatuses:      'posted',
-    fundingCategories:'ED',   // Education — confirmed grants.gov category code
-    eligibilities:    ELIGIBILITY_CODES,
-    rows:             20,
-    startRecordNum:   0
-  };
+  // ── Keyword ladder ──────────────────────────────────────────────────────
+  // Each goal maps to progressively broader keywords. If a keyword yields zero
+  // DISTRICT-RELEVANT results after filtering, we retry with the next, broader
+  // one. This widens only the keyword search - eligibility code 05 and the
+  // agency exclusions are never relaxed.
+  const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal, goal.split(' ')[0]];
+  const keywords = Array.isArray(ladder) ? ladder : [ladder];
 
   console.log('[TMW] Grants.gov live search starting');
+  console.log('[TMW] Goal:', goal, '| keyword ladder:', JSON.stringify(keywords));
   console.log('[TMW] POST /api/grants (server-side proxy -> api.grants.gov/v1/api/search2)');
-  console.log('[TMW] Request body:', JSON.stringify(requestBody));
-  console.log('[TMW] NOTE: this call goes through a same-origin Vercel serverless function,');
-  console.log('[TMW] so no CORS applies. On Vercel this should SUCCEED with a real hitCount.');
-  console.log('[TMW] (If you open index.html directly as a local file, /api/grants does not exist —');
-  console.log('[TMW] the fetch fails and the honest sample-data fallback appears. That is expected.)');
 
-  let fetchError  = null;
-  let parseError  = null;
-  let rawResponse = null;
-  let data        = null;
+  let lastDeepLink = buildGrantsGovDeepLink(keywords[0]);
+  let lastRawCount = 0;
+  let lastL1 = 0, lastL2 = 0;
+  let parseError = null, rawResponse = null, data = null;
 
   try {
-    const t0 = Date.now();
-    const response = await fetch('/api/grants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
-    console.log('[TMW] HTTP response received:', response.status, response.statusText,
-                `in ${Date.now()-t0}ms`);
+    for (let attempt = 0; attempt < keywords.length; attempt++) {
+      const keyword = keywords[attempt];
+      lastDeepLink  = buildGrantsGovDeepLink(keyword);
 
-    if (!response.ok) {
-      fetchError = `HTTP ${response.status} ${response.statusText}`;
-      throw new Error(fetchError);
-    }
+      const requestBody = {
+        keyword,
+        oppStatuses:      'posted',
+        fundingCategories:'ED',
+        eligibilities:    ELIGIBILITY_CODES,
+        rows:             20,
+        startRecordNum:   0
+      };
 
-    rawResponse = await response.text();
-    console.log('[TMW] Raw response (first 500 chars):', rawResponse.slice(0, 500));
+      console.log('[TMW] ── Attempt ' + (attempt+1) + '/' + keywords.length +
+                  ' — keyword: "' + keyword + '" ──');
+      console.log('[TMW] Request body:', JSON.stringify(requestBody));
 
-    try {
-      data = JSON.parse(rawResponse);
-    } catch (e) {
-      parseError = 'JSON parse failed: ' + e.message;
-      console.error('[TMW] PARSE ERROR:', parseError);
-      console.error('[TMW] Raw text was:', rawResponse.slice(0, 300));
-      throw new Error(parseError);
-    }
+      const t0 = Date.now();
+      const response = await fetch('/api/grants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal
+      });
+      if (isStale()) { console.log('[TMW] Run superseded - discarding response'); return; }
 
-    // ── Confirmed response path from official docs ──────────────────────────
-    // Full JSON: { "errorcode": 0, "data": { "oppHits": [...], "hitCount": N } }
-    const apiError  = data.errorcode !== 0 ? data.msg : null;
-    const hitCount  = data.data && data.data.hitCount;
-    const hits      = (data.data && data.data.oppHits) || [];
+      console.log('[TMW] HTTP response received:', response.status, response.statusText,
+                  `in ${Date.now()-t0}ms`);
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
 
-    console.log('[TMW] API errorcode:', data.errorcode);
-    console.log('[TMW] API msg:', data.msg);
-    console.log('[TMW] hitCount:', hitCount);
-    console.log('[TMW] oppHits array length:', hits.length);
-    if (hits.length > 0) {
-      console.log('[TMW] First hit keys:', Object.keys(hits[0]).join(', '));
-      console.log('[TMW] First hit id:', hits[0].id, '| title:', hits[0].title);
-      console.log('[TMW] Detail URL would be:',
-        'https://www.grants.gov/search-results-detail/' + hits[0].id);
-    }
+      rawResponse = await response.text();
+      if (isStale()) return;
+      console.log('[TMW] Raw response (first 300 chars):', rawResponse.slice(0, 300));
 
-    if (apiError) throw new Error('API error: ' + apiError);
-    if (!hits.length) throw new Error('API returned 0 hits for keyword: ' + keyword);
+      try { data = JSON.parse(rawResponse); }
+      catch (e) {
+        parseError = 'JSON parse failed: ' + e.message;
+        console.error('[TMW] PARSE ERROR:', parseError);
+        throw new Error(parseError);
+      }
 
-    // ── Filter to hits that have a real numeric ID ──────────────────────────
-    // Confirmed: id is a numeric string like "219999". Never use the old
-    // /web/grants/view-opportunity.html?oppId= format — that 404s.
-    const validHits = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
-    console.log('[TMW] Hits with valid numeric IDs:', validHits.length, 'of', hits.length);
+      const apiError = data.errorcode !== 0 ? data.msg : null;
+      const hitCount = data.data && data.data.hitCount;
+      const hits     = (data.data && data.data.oppHits) || [];
+      console.log('[TMW] API errorcode:', data.errorcode, '| msg:', data.msg);
+      console.log('[TMW] RAW hitCount:', hitCount, '| oppHits returned:', hits.length);
+      if (apiError) throw new Error('API error: ' + apiError);
 
-    if (!validHits.length) {
-      console.warn('[TMW] No hits had a valid numeric id field. Fields seen:',
-        hits[0] ? Object.keys(hits[0]).join(', ') : 'n/a');
-      throw new Error('No hits had usable numeric opportunity IDs');
-    }
+      const validHits = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
 
-    // ── Relevance filtering, applied in two separately-reported layers ──────
-    const logDrop = (h, why) => console.log('[TMW]   x dropped [' + why + ']:',
-      h.number || h.id, '|', h.agencyCode || '', '|', (h.title || '').slice(0, 65));
+      // Layer 1 — overseas / State Dept
+      const L1_drop = validHits.filter(h => isNonDistrictOpportunity(h));
+      const afterL1 = validHits.filter(h => !isNonDistrictOpportunity(h));
+      console.log('[TMW] Layer 1 (overseas / State Dept): ' + validHits.length + ' -> ' +
+                  afterL1.length + '   (removed ' + L1_drop.length + ')');
+      L1_drop.forEach(h => console.log('[TMW]   x dropped [overseas]:', h.number || h.id,
+        '|', h.agencyCode || '', '|', (h.title || '').slice(0, 60)));
 
-    console.log('[TMW] -- Filtering --');
-    console.log('[TMW] eligibilities sent:', ELIGIBILITY_CODES, '(05 = Independent school districts)');
-    console.log('[TMW] API returned (valid IDs):', validHits.length);
+      // Layer 2 — biomedical / research-only
+      const L2_drop      = afterL1.filter(h => isResearchOnlyOpportunity(h));
+      const districtHits = afterL1.filter(h => !isResearchOnlyOpportunity(h));
+      console.log('[TMW] Layer 2 (research-only agencies): ' + afterL1.length + ' -> ' +
+                  districtHits.length + '   (removed ' + L2_drop.length + ')');
+      L2_drop.forEach(h => console.log('[TMW]   x dropped [research]:', h.number || h.id,
+        '|', h.agencyCode || '', '|', (h.title || '').slice(0, 60)));
 
-    // Layer 1 - overseas / State Dept programs
-    const L1_before = validHits.length;
-    const L1_drop   = validHits.filter(h => isNonDistrictOpportunity(h));
-    const afterL1   = validHits.filter(h => !isNonDistrictOpportunity(h));
-    console.log('[TMW] Layer 1 (overseas / State Dept): ' + L1_before + ' -> ' + afterL1.length +
-                '   (removed ' + L1_drop.length + ')');
-    L1_drop.forEach(h => logDrop(h, 'overseas'));
+      console.log('[TMW] NET for "' + keyword + '": ' + validHits.length + ' raw -> ' +
+                  districtHits.length + ' district-relevant');
 
-    // Layer 2 - biomedical / research-only bodies (NIH, SBIR, NSF non-education)
-    const L2_before    = afterL1.length;
-    const L2_drop      = afterL1.filter(h => isResearchOnlyOpportunity(h));
-    const districtHits = afterL1.filter(h => !isResearchOnlyOpportunity(h));
-    console.log('[TMW] Layer 2 (research-only agencies): ' + L2_before + ' -> ' + districtHits.length +
-                '   (removed ' + L2_drop.length + ')');
-    L2_drop.forEach(h => logDrop(h, 'research'));
+      lastRawCount = validHits.length;
+      lastL1 = L1_drop.length;
+      lastL2 = L2_drop.length;
 
-    console.log('[TMW] NET: ' + validHits.length + ' returned -> ' + districtHits.length +
-                ' district-relevant  (removed ' + (L1_drop.length + L2_drop.length) + ' total)');
+      if (!districtHits.length) {
+        if (attempt < keywords.length - 1) {
+          console.log('[TMW] 0 district-relevant results — broadening keyword and retrying…');
+          continue;
+        }
+        break; // ladder exhausted -> honest empty state below
+      }
 
-    const beforeFilter = validHits.length;
-    const dropped      = L1_drop.concat(L2_drop);
-    // Empirical check of the code labels — the API returns its own facet list.
-    if (data.data && data.data.eligibilities && data.data.eligibilities.length) {
-      console.log('[TMW] Eligibility facets returned by API (verify labels here):',
-        data.data.eligibilities.map(e => e.value + '=' + e.label + ' (' + e.count + ')').join('  |  '));
-    }
+      if (isStale()) return;
 
-    // ── Honest empty state — never pad with unrelated results ───────────────
-    if (!districtHits.length) {
-      console.warn('[TMW] All results filtered out as non-district. Showing honest empty state.');
-      document.getElementById('live-badge').textContent = '🔍 NO MATCHES';
+      // ── Success ──────────────────────────────────────────────────────────
+      console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', districtHits.length,
+                  'district-relevant results (keyword: "' + keyword + '")');
+      const deepLink = lastDeepLink;
+      document.getElementById('live-badge').textContent = '🟢 LIVE';
       document.getElementById('live-header-label').textContent =
-        'No live federal grants matched this search';
-      document.getElementById('live-status').textContent = '';
-      document.getElementById('live-results-inner').innerHTML = `
-        <div class="live-nomatch-banner">
-          <div class="live-nomatch-title">No live federal grants matched this search</div>
-          <div class="live-nomatch-text">
-            Grants.gov returned ${beforeFilter} result${beforeFilter === 1 ? '' : 's'} for
-            <strong>${goal}</strong>, but ${beforeFilter === 1 ? 'it was' : 'none were'} open to
-            TK-12 school districts${dropped.length ? ' — ' + dropped.length + ' were overseas or State Department programs' : ''}.
-            No sample data is being shown in their place.
-          </div>
-          <a class="btn-live-apply" href="${deepLink}" target="_blank"
-             rel="noopener noreferrer" onclick="openExternal('${deepLink}',this)">
-            ↗ Browse all "${goal}" grants on Grants.gov →
-          </a>
-        </div>`;
-      return;
-    }
-
-    // ── Success path ────────────────────────────────────────────────────────
-    console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', districtHits.length, 'district-eligible results displayed');
-    document.getElementById('live-badge').textContent = '🟢 LIVE';
-    document.getElementById('live-header-label').textContent =
-      'Federal Grants — Live from Grants.gov';
-    document.getElementById('live-status').textContent =
-      `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`;
+        'Federal Grants — Live from Grants.gov';
+      document.getElementById('live-status').textContent =
+        `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`;
 
     document.getElementById('live-results-inner').innerHTML =
       districtHits.map(h => {
@@ -2767,48 +2735,64 @@ async function fetchGrantsGovLive(goal, needs, listEl){
            View All Matching Federal Grants on Grants.gov →
          </a>
        </div>`;
+      liveSearchController = null;
+      return;
+    }
+
+    // ── Ladder exhausted: honest empty state, never padded ─────────────────
+    if (isStale()) return;
+    console.warn('[TMW] All keyword variants exhausted — 0 district-relevant results.');
+    const deepLink = lastDeepLink;
+    document.getElementById('live-badge').textContent = '🔍 NO MATCHES';
+    document.getElementById('live-header-label').textContent =
+      'No live federal grants matched this search';
+    document.getElementById('live-status').textContent = '';
+    document.getElementById('live-results-inner').innerHTML = `
+      <div class="live-nomatch-banner">
+        <div class="live-nomatch-title">No live federal grants matched this search</div>
+        <div class="live-nomatch-text">
+          Grants.gov returned ${lastRawCount} education-category result${lastRawCount === 1 ? '' : 's'}
+          for <strong>${goal}</strong> across ${keywords.length} keyword variant${keywords.length === 1 ? '' : 's'},
+          but none were open to TK-12 school districts${(lastL1 + lastL2) ? ' — ' + lastL1 + ' were overseas/State Dept programs and ' + lastL2 + ' were biomedical research' : ''}.
+          No sample data is being shown in their place.
+        </div>
+        <a class="btn-live-apply" href="${deepLink}" target="_blank"
+           rel="noopener noreferrer" onclick="openExternal('${deepLink}',this)">
+          ↗ Browse all "${goal}" grants on Grants.gov →
+        </a>
+      </div>`;
+    liveSearchController = null;
 
   } catch(err) {
-    // ── Classify the error for the console report ───────────────────────────
+    // A superseded search is not a failure — stay silent
+    if (err && err.name === 'AbortError') {
+      console.log('[TMW] Previous live search aborted (superseded by a newer search)');
+      return;
+    }
+    if (isStale()) return;
+
     const msg = err.message || String(err);
     let reason = 'UNKNOWN';
-
-    if (msg.toLowerCase().includes('cors') ||
-        msg.toLowerCase().includes('failed to fetch') ||
-        msg.toLowerCase().includes('networkerror') ||
-        msg.toLowerCase().includes('load') ||
-        msg.toLowerCase().includes('blocked')) {
-      reason = 'CORS_BLOCK';
-    } else if (msg.toLowerCase().includes('http')) {
-      reason = 'HTTP_ERROR';
-    } else if (parseError) {
-      reason = 'PARSE_ERROR';
-    } else if (msg.includes('0 hits') || msg.includes('no hits')) {
-      reason = 'NO_RESULTS';
-    } else if (msg.includes('no usable') || msg.includes('no hits with')) {
-      reason = 'BAD_ID_FIELD';
-    }
+    if (msg.toLowerCase().includes('cors') || msg.toLowerCase().includes('failed to fetch') ||
+        msg.toLowerCase().includes('networkerror') || msg.toLowerCase().includes('load') ||
+        msg.toLowerCase().includes('blocked')) reason = 'CORS_BLOCK';
+    else if (msg.toLowerCase().includes('http')) reason = 'HTTP_ERROR';
+    else if (parseError) reason = 'PARSE_ERROR';
 
     console.warn('[TMW] ✗ LIVE FETCH FAILED');
     console.warn('[TMW] Failure reason code:', reason);
     console.warn('[TMW] Error message:', msg);
     if (reason === 'CORS_BLOCK') {
       console.warn('[TMW] On the deployed Vercel site this should NOT happen — the request');
-      console.warn('[TMW] goes to the same-origin /api/grants proxy. If you see this on the');
-      console.warn('[TMW] live site, check that the api/grants.js file deployed correctly');
-      console.warn('[TMW] (Vercel dashboard -> your project -> Functions tab).');
-    }
-    if (rawResponse && !data) {
-      console.warn('[TMW] Raw response before parse failure:', rawResponse.slice(0, 500));
+      console.warn('[TMW] goes to the same-origin /api/grants proxy. Check the Vercel');
+      console.warn('[TMW] dashboard -> your project -> Functions tab that api/grants deployed.');
     }
 
-    // ── Honest fallback banner ───────────────────────────────────────────────
-    // Label as sample data clearly — never present mock data as live results
+    const deepLink = lastDeepLink;
     document.getElementById('live-badge').textContent = '⚠️ SAMPLE';
     document.getElementById('live-header-label').textContent =
       'Live search unavailable — showing sample grants for demonstration';
     document.getElementById('live-status').textContent = '';
-
     document.getElementById('live-results-inner').innerHTML = `
       <div class="live-fallback-banner">
         <div class="live-fallback-title">⚠️ Live federal data could not be loaded</div>
@@ -2819,25 +2803,56 @@ async function fetchGrantsGovLive(goal, needs, listEl){
             ? 'The Grants.gov API returned an error: ' + msg
             : reason === 'PARSE_ERROR'
             ? 'The API response could not be parsed: ' + msg
-            : reason === 'NO_RESULTS'
-            ? 'The Grants.gov search returned 0 results for this category. Try a broader search keyword.'
-            : 'Reason: ' + msg
-          }
+            : 'Reason: ' + msg}
         </div>
         <div class="live-fallback-cta">
           Search the real federal grants database directly:
           <a class="btn-live-apply" href="${deepLink}" target="_blank"
-             rel="noopener noreferrer"
-             onclick="openExternal('${deepLink}',this)">
+             rel="noopener noreferrer" onclick="openExternal('${deepLink}',this)">
             ↗ Search "${goal}" on Grants.gov →
           </a>
-          <div class="live-fallback-note">
-            Opens the official federal database pre-filtered for <strong>${goal}</strong> education grants.
-          </div>
         </div>
       </div>`;
+    liveSearchController = null;
   }
 }
+
+// ── Keyword A/B harness ───────────────────────────────────────────────────
+// Run in DevTools on the live site:   TMW_testKeywords('Career and Technical Education')
+// or with your own list:              TMW_testKeywords('Arts', ['arts education','arts','music'])
+// Reports RAW hits and post-filter counts per keyword so you can pick the best.
+window.TMW_testKeywords = async function(goal, customKeywords){
+  const ladder = customKeywords || GRANTSGOV_KEYWORD_MAP[goal] || [goal];
+  const list   = Array.isArray(ladder) ? ladder : [ladder];
+  console.log('[TMW-TEST] Testing ' + list.length + ' keyword(s) for goal: ' + goal);
+  const rows = [];
+  for (const keyword of list) {
+    try {
+      const r = await fetch('/api/grants', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ keyword, oppStatuses:'posted', fundingCategories:'ED',
+                               eligibilities: ELIGIBILITY_CODES, rows:20, startRecordNum:0 })
+      });
+      const d = await r.json();
+      const hits = (d.data && d.data.oppHits) || [];
+      const valid = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
+      const afterL1 = valid.filter(h => !isNonDistrictOpportunity(h));
+      const afterL2 = afterL1.filter(h => !isResearchOnlyOpportunity(h));
+      rows.push({ keyword,
+        'raw hitCount': (d.data && d.data.hitCount) || 0,
+        'returned':     valid.length,
+        'after L1':     afterL1.length,
+        'after L2 (usable)': afterL2.length });
+    } catch(e) {
+      rows.push({ keyword, 'raw hitCount':'ERROR', returned:'-', 'after L1':'-',
+                  'after L2 (usable)': e.message });
+    }
+  }
+  console.table(rows);
+  console.log('[TMW-TEST] Pick the keyword with the highest "after L2 (usable)" count.');
+  return rows;
+};
+
 
 /* ── DRAFT PAGE DATA ──────────────────────────────────────────── */
 const DP_SECTIONS=[
