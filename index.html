@@ -1476,6 +1476,12 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   font-size:.72rem; color:var(--gray-400); text-align:center;
   margin-top:.5rem; line-height:1.5;
 }
+.live-nomatch-banner {
+  background:var(--gray-50); border:1.5px solid var(--gray-200); border-radius:12px;
+  padding:1.25rem 1.5rem; margin:.5rem 0;
+}
+.live-nomatch-title { font-weight:700; font-size:.9rem; color:var(--navy); margin-bottom:.5rem; }
+.live-nomatch-text  { font-size:.84rem; color:var(--gray-600); line-height:1.65; margin-bottom:1rem; }
 </style>
 </head>
 <body>
@@ -2435,6 +2441,34 @@ function buildGrantsGovDeepLink(keyword){
   return `https://www.grants.gov/search-grants?keyword=${encoded}&oppStatuses=posted`;
 }
 
+// ── Client-side relevance safety net ──────────────────────────────────────
+// Approach chosen: EXCLUDE State Dept / overseas programs, rather than
+// allow-listing agencies (ED|NSF|USDA|DOJ|HHS). An allow-list would silently
+// drop legitimate district funders — EPA (green schools), IMLS (libraries),
+// NEA (arts), FCC (E-Rate), DOT (safe routes). Exclusion is surgical; an
+// allow-list quietly hides real opportunities.
+//
+// State Dept opportunities appear under the Education category but are run by
+// overseas embassies and open only to foreign institutions. Their opportunity
+// numbers and agency codes follow DOS-<3-letter country code>, e.g.
+// DOS-IDN (Indonesia), DOS-EGY (Egypt), DOS-DZA (Algeria).
+function isNonDistrictOpportunity(h){
+  const code   = String(h.agencyCode || '');
+  const number = String(h.number || '');
+  const agency = String(h.agency || h.agencyName || '');
+  const title  = String(h.title || '');
+
+  if (/^DOS/i.test(code))    return true;   // DOS, DOS-IDN, DOS-EGY, DOS-DZA…
+  if (/^DOS-/i.test(number)) return true;
+  if (/^AID/i.test(code))    return true;   // USAID
+
+  const blob = (agency + ' ' + title + ' ' + number).toUpperCase();
+  return ['DEPARTMENT OF STATE','DEPT OF STATE','U.S. MISSION','US MISSION',
+          'EMBASSY','CONSULATE','PUBLIC DIPLOMACY','USAID',
+          'BUREAU OF EDUCATIONAL AND CULTURAL AFFAIRS']
+         .some(term => blob.includes(term));
+}
+
 async function fetchGrantsGovLive(goal, needs, listEl){
   const section = document.createElement('div');
   section.id = 'live-federal-section';
@@ -2452,10 +2486,32 @@ async function fetchGrantsGovLive(goal, needs, listEl){
 
   const keyword   = GRANTSGOV_KEYWORD_MAP[goal] || (goal + ' K-12 school district');
   const deepLink  = buildGrantsGovDeepLink(keyword);
+  // ── Eligibility filter ──────────────────────────────────────────────────
+  // Grants.gov eligibility codes (the search2 docs confirm this numbering by
+  // showing {"label":"County governments","value":"01"} in the response facet):
+  //   00 State governments            01 County governments
+  //   02 City or township govts       04 Special district governments
+  //   05 INDEPENDENT SCHOOL DISTRICTS 06 Public/State-controlled higher ed
+  //   12 Nonprofits w/ 501(c)(3)      20 Private higher ed
+  //   21 Individuals                  25 "Others"      99 Unrestricted
+  //
+  // We use 05 alone. A TK-12 district is an LEA, and any federal opportunity
+  // a district may apply for lists 05 among its eligibilities — the filter is
+  // an OR match, so 05 captures all of them without padding the list.
+  //
+  // Deliberately EXCLUDED: 06/20 (higher ed) pulled in university research
+  // like NIH clinical trials; 25 ("Others") is the bucket the State Dept
+  // embassy programs sit in. Those two were the source of the noise.
+  //
+  // If results are ever too sparse, add State governments with '05|00' —
+  // that surfaces SEA-administered programs districts receive as subgrants.
+  const ELIGIBILITY_CODES = '05';
+
   const requestBody = {
     keyword,
     oppStatuses:      'posted',
     fundingCategories:'ED',   // Education — confirmed grants.gov category code
+    eligibilities:    ELIGIBILITY_CODES,
     rows:             20,
     startRecordNum:   0
   };
@@ -2532,16 +2588,60 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       throw new Error('No hits had usable numeric opportunity IDs');
     }
 
+    // ── Relevance filter: drop overseas / non-district opportunities ────────
+    const beforeFilter = validHits.length;
+    const dropped      = validHits.filter(h => isNonDistrictOpportunity(h));
+    const districtHits = validHits.filter(h => !isNonDistrictOpportunity(h));
+
+    console.log('[TMW] ── Relevance filter ──');
+    console.log('[TMW] eligibilities sent:', ELIGIBILITY_CODES, '(05 = Independent school districts)');
+    console.log('[TMW] Results BEFORE district filter:', beforeFilter);
+    console.log('[TMW] Results AFTER  district filter:', districtHits.length);
+    console.log('[TMW] Dropped as non-district:', dropped.length);
+    if (dropped.length) {
+      dropped.forEach(h => console.log('[TMW]   ✗ dropped:', h.number || h.id, '|',
+        h.agencyCode || '', '|', (h.title || '').slice(0, 70)));
+    }
+    // Empirical check of the code labels — the API returns its own facet list.
+    if (data.data && data.data.eligibilities && data.data.eligibilities.length) {
+      console.log('[TMW] Eligibility facets returned by API (verify labels here):',
+        data.data.eligibilities.map(e => e.value + '=' + e.label + ' (' + e.count + ')').join('  |  '));
+    }
+
+    // ── Honest empty state — never pad with unrelated results ───────────────
+    if (!districtHits.length) {
+      console.warn('[TMW] All results filtered out as non-district. Showing honest empty state.');
+      document.getElementById('live-badge').textContent = '🔍 NO MATCHES';
+      document.getElementById('live-header-label').textContent =
+        'No live federal grants matched this search';
+      document.getElementById('live-status').textContent = '';
+      document.getElementById('live-results-inner').innerHTML = `
+        <div class="live-nomatch-banner">
+          <div class="live-nomatch-title">No live federal grants matched this search</div>
+          <div class="live-nomatch-text">
+            Grants.gov returned ${beforeFilter} result${beforeFilter === 1 ? '' : 's'} for
+            <strong>${goal}</strong>, but ${beforeFilter === 1 ? 'it was' : 'none were'} open to
+            TK-12 school districts${dropped.length ? ' — ' + dropped.length + ' were overseas or State Department programs' : ''}.
+            No sample data is being shown in their place.
+          </div>
+          <a class="btn-live-apply" href="${deepLink}" target="_blank"
+             rel="noopener noreferrer" onclick="openExternal('${deepLink}',this)">
+            ↗ Browse all "${goal}" grants on Grants.gov →
+          </a>
+        </div>`;
+      return;
+    }
+
     // ── Success path ────────────────────────────────────────────────────────
-    console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', validHits.length, 'results displayed');
+    console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', districtHits.length, 'district-eligible results displayed');
     document.getElementById('live-badge').textContent = '🟢 LIVE';
     document.getElementById('live-header-label').textContent =
       'Federal Grants — Live from Grants.gov';
     document.getElementById('live-status').textContent =
-      `${validHits.length} live federal opportunities`;
+      `${districtHits.length} district-eligible federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}`;
 
     document.getElementById('live-results-inner').innerHTML =
-      validHits.map(h => {
+      districtHits.map(h => {
         // Confirmed date format: "10/11/2023" (MM/DD/YYYY)
         // Parse safely — new Date("10/11/2023") works cross-browser for this format
         let closeDateStr = 'See listing';
@@ -2557,13 +2657,16 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         }
         // Confirmed detail URL format from official docs
         const detailUrl = `https://www.grants.gov/search-results-detail/${h.id}`;
-        const aln = (h.alnist && h.alnist.length) ? h.alnist[0] : null;
+        // Real API responses use cfdaList (confirmed via live [TMW] logs);
+        // docs sample showed alnist — support both.
+        const alnArr = h.cfdaList || h.alnist || [];
+        const aln = alnArr.length ? alnArr[0] : null;
 
         return `<div class="live-grant-card">
           <div class="live-grant-top">
             <div>
               <div class="live-grant-name">${h.title || 'Federal Grant Opportunity'}</div>
-              <div class="live-grant-agency">${h.agencyName || h.agencyCode || 'Federal Agency'}</div>
+              <div class="live-grant-agency">${h.agencyName || h.agency || h.agencyCode || 'Federal Agency'}</div>
             </div>
             <span class="live-grant-tag">🟢 Live Federal</span>
           </div>
