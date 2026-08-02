@@ -2126,6 +2126,11 @@ function openExternal(url, btnEl){
 }
 
 /* ── GRANT DATABASE ───────────────────────────────────────────── */
+// Live opportunities are held here so the Draft Generator can build a draft
+// for a real, currently-open grant - not just the curated reference set.
+const LIVE_GRANT_REGISTRY = {};
+let lastSearchCtx = null;
+
 const GRANTS_DB = {
   "School Safety":[
     {name:"STOP School Violence Act – Prevention Program",funder:"Dept. of Justice / COPS Office",type:"federal",amount:"$500,000 – $2,000,000",deadline:"April 10, 2026",deadlineSoon:false,score:96,difficulty:"Hard",eligibility:"State and local governments and school districts. Requires a detailed threat assessment plan, law enforcement partnership MOA, and evidence-based program selection.",whyMatch:"Your district's safety improvement goals closely align with this program's prevention and early intervention framework. Districts with documented safety incidents receive scoring preference.",desc:"Funds school districts to implement violence prevention programs, behavioral threat assessment teams, anonymous tip lines, training for staff, and campus security improvements."},
@@ -2257,123 +2262,28 @@ function renderResults(goal,district,state,students,needs,amount){
 
   const list=document.getElementById('grants-list');
   list.innerHTML='';
-  const easy=grants.filter(g=>g.difficulty==='Easy').length;
-  const urgent=grants.filter(g=>g.deadlineSoon).length;
-  const avgScore=grants.length?Math.round(grants.reduce((s,g)=>s+g.score,0)/grants.length):0;
-  // inject summary box
+
+  // Curated reference cards were removed here. They looked like opportunities
+  // - deadline, award amount, match score, Generate Draft - but linked to
+  // program overview pages with nothing open to apply for, and their scores
+  // and amounts were hand-written rather than computed. Live Grants.gov
+  // opportunities are now the sole results and carry the full card treatment.
+  lastSearchCtx = { district, state, goal, students, needs, amount };
+
   document.getElementById('results-summary-container').innerHTML=`
     <div class="results-summary-box">
       <span class="summary-icon">✦</span>
       <div>
-        <div class="summary-headline">Based on your district profile, we found ${grants.length} potential grant opportunities${multiMode?' across '+categoryLabel:''}.</div>
-        <div class="summary-body">The grants below best match your funding goals and eligibility requirements for <strong>${categoryLabel}</strong> in <strong>${district}, ${state}</strong>. Average match score across results: <strong>${avgScore}%</strong>.</div>
-        <div class="summary-chips">
-          <span class="summary-chip">📋 ${grants.length} total matches</span>
-          <span class="summary-chip">✅ ${easy} easy to apply</span>
-          ${urgent>0?`<span class="summary-chip">⚠️ ${urgent} deadline${urgent>1?'s':''} approaching</span>`:''}
-          <span class="summary-chip">🎯 ${avgScore}% avg match</span>
-          ${multiMode?`<span class="summary-chip">🗂 ${goalsToSearch.length} categories</span>`:''}
+        <div class="summary-headline" id="summary-headline">Searching live federal opportunities${multiMode?' across '+categoryLabel:''}…</div>
+        <div class="summary-body" id="summary-body">Querying Grants.gov for currently-posted <strong>${categoryLabel}</strong> opportunities open to districts like <strong>${district}, ${state}</strong>. Overseas, biomedical-research and off-topic programs are filtered out.</div>
+        <div class="summary-chips" id="summary-chips">
+          <span class="summary-chip">⏳ contacting Grants.gov…</span>
         </div>
       </div>
     </div>`;
-  document.getElementById('results-meta').innerHTML=`Showing <strong>${grants.length} grants</strong> for <strong>${district}</strong> (${state}) · <strong>${categoryLabel}</strong>`;
+  document.getElementById('results-meta').innerHTML=`Live federal opportunities for <strong>${district}</strong> (${state}) · <strong>${categoryLabel}</strong>`;
 
-  grants.forEach((g,gi)=>{
-    const typeLabel={federal:'Federal',state:'State',private:'Private',foundation:'Foundation'}[g.type];
-    const C=2*Math.PI*26;
-    const offset=C*(1-g.score/100);
-    const scoreColor=g.score>=90?'#16a34a':g.score>=80?'#2563eb':'#d97706';
-    const safeN=g.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    const verifyId='verify-'+goal.replace(/\\s+/g,'')+'-'+gi;
-    const sourceUrl=getSourceUrl(g);
-    const lastUpdated=getLastUpdated(g);
-    const reqDocs=getRequiredDocs(g);
-    const compLabel=complexityLabel(g.difficulty);
-    const compCls=complexityClass(g.difficulty);
-
-    const card=document.createElement('div');
-    card.className='grant-card'; card.dataset.type=g.type;
-    card.innerHTML=`
-      <div class="grant-card-top">
-        <div>
-          <div class="grant-header"><div class="grant-name">${g.name}</div><span class="grant-tag tag-${g.type}">${typeLabel}</span></div>
-          <div class="grant-funder">${g.funder}</div>
-          <div class="grant-stats">
-            <div class="grant-stat"><span class="grant-stat-label">Funding Amount</span><span class="grant-stat-value amount-val">${g.amount}</span></div>
-            <div class="grant-stat"><span class="grant-stat-label">Deadline</span><span class="grant-stat-value ${g.deadlineSoon?'deadline-soon':''}">${g.deadline}${g.deadlineSoon?' ⚠️':''}</span></div>
-          </div>
-        </div>
-        <div class="grant-side">
-          <div class="match-score">
-            <div class="match-ring">
-              <svg width="68" height="68" viewBox="0 0 68 68"><circle class="match-ring-track" cx="34" cy="34" r="26"/><circle class="match-ring-fill" cx="34" cy="34" r="26" stroke="${scoreColor}" stroke-dasharray="${C}" stroke-dashoffset="${offset}"/></svg>
-              <div class="match-ring-text">${g.score}%</div>
-            </div>
-            <span class="match-label">Match</span>
-          </div>
-        </div>
-      </div>
-      <div class="grant-body">
-
-        <div class="gc-section-label">🏫 District Fit</div>
-        <div class="grant-why"><div class="grant-why-label">✦ Why This Matches Your District</div><div class="grant-why-text">${personalizedWhyMatch(g,district,goal)}</div></div>
-        <div class="personalized-insights">
-          <div class="pi-item"><div class="pi-label"><span>🎯</span>Priority Supported</div><div class="pi-text">${personalizedPriorityFit(goal)}</div></div>
-          <div class="pi-item"><div class="pi-label"><span>💡</span>Suggested Application Angle</div><div class="pi-text">${personalizedAngle(g)}</div></div>
-        </div>
-
-        <div class="verify-block" id="${verifyId}">
-          <div class="verify-header" onclick="toggleVerifyBlock('${verifyId}')">
-            <span class="verify-header-label">🔎 Verification Details</span>
-            <span class="verify-chevron">▾</span>
-          </div>
-          <div class="verify-content">
-            <a class="btn-source-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer" onclick="openExternal('${sourceUrl}',this)">↗ Official Source Link</a>
-            <div class="source-url-fallback">${sourceUrl}</div>
-            <div class="verify-row">
-              <div class="verify-item"><div class="verify-item-label">Last Updated</div><div class="verify-item-value">${lastUpdated}</div></div>
-              <div class="verify-item"><div class="verify-item-label">Funding Agency</div><div class="verify-item-value">${g.funder}</div></div>
-            </div>
-            <div class="verify-subsection">
-              <div class="verify-subsection-label">Eligibility Requirements</div>
-              <div class="verify-subsection-text">${g.eligibility}</div>
-            </div>
-            <div class="verify-subsection">
-              <div class="verify-subsection-label">Required Documents</div>
-              <ul class="req-docs-list">${reqDocs.map(d=>`<li>${d}</li>`).join('')}</ul>
-            </div>
-            <div class="complexity-row">
-              <span class="complexity-row-label">Application Complexity:</span>
-              <span class="difficulty-badge ${compCls}">${compLabel}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="caution-note">⚠️ <span>Before applying, verify eligibility, deadlines, and requirements through the official grant source.</span></div>
-
-      </div>
-      <div class="grant-card-footer">
-        <span class="difficulty-badge ${compCls}">${compLabel} Complexity</span>
-        <button class="btn-draft" onclick="generateDraft('${safeN}')">✦ Generate Draft</button>
-      </div>`;
-    list.appendChild(card);
-  });
-
-  // Honest empty state - some categories have no curated grant yet. Say so
-  // plainly rather than rendering a blank panel; live federal results still
-  // appear below.
-  if (!grants.length) {
-    const empty = document.createElement('div');
-    empty.className = 'live-nomatch-banner';
-    empty.innerHTML =
-      '<div class="live-nomatch-title">No curated grants in this category yet</div>' +
-      '<div class="live-nomatch-text">Every curated grant on this site is a real, ' +
-      'verifiable federal or foundation program, and we have not yet added one for ' +
-      '<strong>' + goal + '</strong>. Live federal results from Grants.gov appear below.</div>';
-    list.appendChild(empty);
-  }
-
-  saveSearch(district,state,goal,students,grants.length,needs,amount);
+  // saveSearch is called once live results land (see fetchGrantsGovLive)
   const rs=document.getElementById('results-section');
   rs.style.display='block';
   rs.classList.remove('revealed');
@@ -2648,6 +2558,53 @@ function isTopicallyIrrelevant(h, goal){
   return false;
 }
 
+
+// ── Live opportunity card helpers ─────────────────────────────────────────
+// The Grants.gov API returns no award amount, eligibility text or narrative,
+// so these build honest context from what we DO know: the category the user
+// chose, the district profile, and the filters the grant passed.
+function liveWhyMatch(h, goal){
+  const p = districtProfile;
+  const title = decodeEntities(h.title);
+  const bits = [];
+  if (p && p.districtName) bits.push(p.districtName + "'s");
+  const who = bits.length ? bits.join(' ') : 'your';
+  let txt = 'This is a currently-posted federal opportunity that matched ' + who +
+            ' <strong>' + goal + '</strong> search. It passed screening for ' +
+            'school-district relevance — overseas programs, biomedical research ' +
+            'and off-topic listings were removed.';
+  if (p && p.challenges) {
+    const snip = p.challenges.length > 90 ? p.challenges.slice(0,90) + '…' : p.challenges;
+    txt += ' Weigh it against the need you described: "' + snip + '"';
+  }
+  return txt;
+}
+
+function liveAngle(h, goal){
+  const p = districtProfile;
+  if (p && p.challenges) {
+    const snip = p.challenges.length > 95 ? p.challenges.slice(0,95) + '…' : p.challenges;
+    return 'Open your narrative with your district\'s stated need — "' + snip +
+           '" — then tie it to this program\'s stated purpose on the official listing.';
+  }
+  return 'Read the official listing first, then lead your narrative with specific ' +
+         'student outcome data, a clear timeline, and measurable goals tied to this ' +
+         'program\'s stated priorities.';
+}
+
+function liveDeadlineInfo(h){
+  if (!h.closeDate) return { text:'See listing', soon:false };
+  const parts = String(h.closeDate).split('/');
+  if (parts.length !== 3) return { text:String(h.closeDate), soon:false };
+  const d = new Date(+parts[2], +parts[0]-1, +parts[1]);
+  const days = Math.ceil((d - new Date()) / 86400000);
+  return {
+    text: d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    soon: days >= 0 && days <= 30,
+    days: days
+  };
+}
+
 async function fetchGrantsGovLive(goal, needs, listEl){
   // 1. Cancel any in-flight request from a previous search
   if (liveSearchController) {
@@ -2820,71 +2777,132 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         </div>`;
 
     // Print the exact URLs being rendered so they can be copied and tested.
-    districtHits.slice(0, 3).forEach((h, idx) =>
-      console.log('[TMW] Result ' + (idx+1) + ' link -> https://simpler.grants.gov/opportunity/' +
-                  h.id + '   (' + String(h.title || '').slice(0, 50) + ')'));
+      districtHits.slice(0, 3).forEach((h, idx) =>
+        console.log('[TMW] Result ' + (idx+1) + ' link -> https://simpler.grants.gov/opportunity/' +
+                    h.id + '   (' + String(h.title || '').slice(0, 50) + ')'));
 
-    document.getElementById('live-results-inner').innerHTML = noticeHtml +
-      districtHits.slice(0, 12).map(h => {
-        // Confirmed date format: "10/11/2023" (MM/DD/YYYY)
-        // Parse safely — new Date("10/11/2023") works cross-browser for this format
-        let closeDateStr = 'See listing';
-        if (h.closeDate) {
-          const parts = h.closeDate.split('/');
-          if (parts.length === 3) {
-            const d = new Date(+parts[2], +parts[0]-1, +parts[1]);
-            closeDateStr = d.toLocaleDateString('en-US',
-              { month:'long', day:'numeric', year:'numeric' });
-          } else {
-            closeDateStr = h.closeDate;
-          }
-        }
-        // Confirmed detail URL format from official docs
-        // simpler.grants.gov renders the opportunity page reliably; the legacy
-        // www.grants.gov/search-results-detail/{id} route was redirecting to the
-        // homepage/contact page. Same numeric id, already validated as /^\d+$/
-        // before this point - non-numeric ids never reach here.
-        const detailUrl = `https://simpler.grants.gov/opportunity/${h.id}`;
-        // Real API responses use cfdaList (confirmed via live [TMW] logs);
-        // docs sample showed alnist — support both.
-        const alnArr = h.cfdaList || h.alnist || [];
-        const aln = alnArr.length ? alnArr[0] : null;
+      // Register each live grant so the Draft Generator can build against it.
+      districtHits.forEach(h => {
+        const dl = liveDeadlineInfo(h);
+        LIVE_GRANT_REGISTRY[decodeEntities(h.title)] = {
+          name: decodeEntities(h.title),
+          funder: h.agency || h.agencyName || h.agencyCode || 'Federal Agency',
+          amount: '',                        // not returned by the API
+          deadline: dl.text,
+          deadlineSoon: dl.soon,
+          difficulty: 'Medium',
+          type: 'federal',
+          isLive: true,
+          oppId: h.id,
+          oppNumber: h.number || '',
+          url: 'https://simpler.grants.gov/opportunity/' + h.id
+        };
+      });
 
-        return `<div class="live-grant-card">
-          <div class="live-grant-top">
+      // Summary now reflects the real live count.
+      const soonCount = districtHits.filter(h => liveDeadlineInfo(h).soon).length;
+      const _hl = document.getElementById('summary-headline');
+      const _bd = document.getElementById('summary-body');
+      const _ch = document.getElementById('summary-chips');
+      if (_hl) _hl.textContent = 'Found ' + districtHits.length +
+        ' live federal opportunit' + (districtHits.length===1?'y':'ies') + ' for ' + goal + '.';
+      if (_bd) _bd.innerHTML = 'These are currently posted on Grants.gov and open for ' +
+        'application. Eligibility is not pre-filtered — confirm your district qualifies ' +
+        'on the official listing before applying.';
+      if (_ch) _ch.innerHTML =
+        '<span class="summary-chip">🟢 ' + districtHits.length + ' live opportunities</span>' +
+        (soonCount ? '<span class="summary-chip">⚠️ ' + soonCount + ' closing within 30 days</span>' : '') +
+        '<span class="summary-chip">🔎 filtered for TK-12 relevance</span>';
+
+      if (lastSearchCtx) {
+        saveSearch(lastSearchCtx.district, lastSearchCtx.state, lastSearchCtx.goal,
+                   lastSearchCtx.students, districtHits.length,
+                   lastSearchCtx.needs, lastSearchCtx.amount);
+      }
+
+      // Full-format cards, replacing what the curated set used to occupy.
+      const listEl2 = document.getElementById('grants-list');
+      listEl2.innerHTML = '';
+      districtHits.slice(0, 12).forEach(h => {
+        const title     = decodeEntities(h.title) || 'Federal Grant Opportunity';
+        const agency    = h.agency || h.agencyName || h.agencyCode || 'Federal Agency';
+        const dl        = liveDeadlineInfo(h);
+        const detailUrl = 'https://simpler.grants.gov/opportunity/' + h.id;
+        const alnArr    = h.cfdaList || h.alnist || [];
+        const aln       = alnArr.length ? alnArr[0] : null;
+        const verifyId  = 'verify-live-' + h.id;
+        const safeN     = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+        const card = document.createElement('div');
+        card.className = 'grant-card';
+        card.dataset.type = 'federal';
+        card.innerHTML = `
+          <div class="grant-card-top">
             <div>
-              <div class="live-grant-name">${decodeEntities(h.title) || 'Federal Grant Opportunity'}</div>
-              <div class="live-grant-agency">${h.agencyName || h.agency || h.agencyCode || 'Federal Agency'}</div>
+              <div class="grant-header">
+                <div class="grant-name">${title}</div>
+                <span class="grant-tag tag-federal">🟢 Live Federal</span>
+              </div>
+              <div class="grant-funder">${agency}</div>
+              <div class="grant-stats">
+                <div class="grant-stat"><span class="grant-stat-label">Deadline</span><span class="grant-stat-value ${dl.soon?'deadline-soon':''}">${dl.text}${dl.soon?' ⚠️':''}</span></div>
+                ${h.number?`<div class="grant-stat"><span class="grant-stat-label">Opportunity #</span><span class="grant-stat-value">${h.number}</span></div>`:''}
+                ${aln?`<div class="grant-stat"><span class="grant-stat-label">ALN</span><span class="grant-stat-value">${aln}</span></div>`:''}
+              </div>
             </div>
-            <span class="live-grant-tag">🟢 Live Federal</span>
           </div>
-          <div class="live-grant-meta">
-            ${h.number ? `<span>📋 ${h.number}</span>` : ''}
-            <span>⏰ Deadline: ${closeDateStr}</span>
-            ${aln ? `<span>ALN: ${aln}</span>` : ''}
-            <span>Status: ${h.oppStatus || 'posted'}</span>
+          <div class="grant-body">
+
+            <div class="gc-section-label">🏫 District Fit</div>
+            <div class="grant-why">
+              <div class="grant-why-label">✦ Why This Matched Your Search</div>
+              <div class="grant-why-text">${liveWhyMatch(h, goal)}</div>
+            </div>
+            <div class="personalized-insights">
+              <div class="pi-item"><div class="pi-label"><span>🎯</span>Priority Supported</div><div class="pi-text">${personalizedPriorityFit(goal)}</div></div>
+              <div class="pi-item"><div class="pi-label"><span>💡</span>Suggested Application Angle</div><div class="pi-text">${liveAngle(h, goal)}</div></div>
+            </div>
+
+            <div class="verify-block" id="${verifyId}">
+              <div class="verify-header" onclick="toggleVerifyBlock('${verifyId}')">
+                <span class="verify-header-label">🔎 Verification Details</span>
+                <span class="verify-chevron">▾</span>
+              </div>
+              <div class="verify-content">
+                <a class="btn-source-link" href="${detailUrl}" target="_blank"
+                   rel="noopener noreferrer" onclick="openExternal('${detailUrl}',this)">
+                  ↗ View full opportunity
+                </a>
+                <div class="source-url-fallback">${detailUrl}</div>
+                <div class="verify-row">
+                  <div class="verify-item"><div class="verify-item-label">Funding Agency</div><div class="verify-item-value">${agency}</div></div>
+                  <div class="verify-item"><div class="verify-item-label">Status</div><div class="verify-item-value">${h.oppStatus || 'posted'}</div></div>
+                </div>
+                <div class="verify-row">
+                  <div class="verify-item"><div class="verify-item-label">Posted</div><div class="verify-item-value">${h.openDate || '—'}</div></div>
+                  <div class="verify-item"><div class="verify-item-label">Opportunity ID</div><div class="verify-item-value">${h.id}</div></div>
+                </div>
+                <div class="verify-subsection">
+                  <div class="verify-subsection-label">Award Amount &amp; Eligibility</div>
+                  <div class="verify-subsection-text">Not included in the Grants.gov search feed. Both are stated on the official listing &mdash; open it before committing staff time.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="caution-note">⚠️ <span>Before applying, verify eligibility, deadlines, and requirements on the official listing.</span></div>
+
           </div>
-          <div class="live-grant-desc">
-            Opportunity #${h.id} — posted ${h.openDate || 'recently'}. 
-            Click "View full opportunity" for the full description, eligibility details, 
-            and application materials.
-          </div>
-          <div class="live-grant-footer">
-            <a class="btn-live-apply" href="${detailUrl}" target="_blank"
-               rel="noopener noreferrer"
-               onclick="openExternal('${detailUrl}',this)">
-              ↗ View full opportunity
-            </a>
-          </div>
-        </div>`;
-      }).join('') +
-      `<div style="margin-top:1rem;text-align:center;">
-         <a class="btn-live-all" href="${deepLink}" target="_blank"
-            rel="noopener noreferrer"
-            onclick="openExternal('${deepLink}',this)">
-           View All Matching Federal Grants on Grants.gov →
-         </a>
-       </div>`;
+          <div class="grant-card-footer">
+            <a class="btn-source-link" style="margin-top:0;" href="${detailUrl}" target="_blank"
+               rel="noopener noreferrer" onclick="openExternal('${detailUrl}',this)">↗ View full opportunity</a>
+            <button class="btn-draft" onclick="generateDraft('${safeN}')">✦ Generate Draft</button>
+          </div>`;
+        listEl2.appendChild(card);
+      });
+
+      // Separate live section no longer needed - live results ARE the results.
+      const sect = document.getElementById('live-federal-section');
+      if (sect) sect.remove();
       liveSearchController = null;
       return;
     }
@@ -3211,7 +3229,9 @@ function generateDraft(grantName){
 }
 function _doGenerateDraft(grantName){
   const allGrants=Object.values(GRANTS_DB).flat();
-  const g=allGrants.find(x=>x.name===grantName)||{funder:'',amount:'',name:grantName,deadline:'',score:0,difficulty:'Medium'};
+  const g = allGrants.find(x=>x.name===grantName)
+         || LIVE_GRANT_REGISTRY[grantName]
+         || {funder:'',amount:'',name:grantName,deadline:'',score:0,difficulty:'Medium'};
   dpGrant=g;
   const draft=buildFullDraft(g,cDistrict,cState,cStudents,cGoal,cNeeds);
 
@@ -3220,10 +3240,17 @@ function _doGenerateDraft(grantName){
   document.getElementById('dp-funder').textContent=g.funder;
   document.getElementById('dp-amount').textContent=g.amount||'See guidelines';
   document.getElementById('dp-deadline').textContent=g.deadline||'See guidelines';
-  const sc=g.score||0;
   const scoreEl=document.getElementById('dp-score');
-  scoreEl.textContent=sc+'% Match';
-  scoreEl.className='draft-meta-value '+(sc>=90?'green':sc>=80?'':'amber');
+  if (g.isLive) {
+    // No honest way to compute a match percentage from the Grants.gov API,
+    // so state what is actually true instead of inventing a number.
+    scoreEl.textContent='Live opportunity';
+    scoreEl.className='draft-meta-value green';
+  } else {
+    const sc=g.score||0;
+    scoreEl.textContent=sc+'% Match';
+    scoreEl.className='draft-meta-value '+(sc>=90?'green':sc>=80?'':'amber');
+  }
   document.getElementById('dp-difficulty').textContent=g.difficulty||'—';
 
   // populate district sidebar
@@ -4001,19 +4028,21 @@ function buildDashboard(){
       {name:'NSF STEM Education Innovation Grant',funder:'National Science Foundation',score:97,whyMatch:'A high-value federal grant worth exploring once your district profile is complete.'},
     ];
   }
+  // No fabricated match percentages here. These are well-known federal
+  // programs worth knowing about, not scored recommendations.
   recEl.innerHTML=recGrants.map(g=>`
     <div class="rec-card">
       <div class="rec-card-top">
-        <div class="rec-card-icon">⭐</div>
+        <div class="rec-card-icon">📌</div>
         <div>
           <div class="rec-card-name">${g.name}</div>
           <div class="rec-card-funder">${g.funder}</div>
         </div>
       </div>
-      <div class="rec-card-why">${g.whyMatch||'A strong potential match based on your district profile.'}</div>
+      <div class="rec-card-why">${g.whyMatch||'A major federal funding stream for TK-12 districts.'}</div>
       <div class="rec-card-footer">
-        <span class="rec-match-badge ${g.score>=90?'rmb-high':'rmb-med'}">${g.score}% match</span>
-        <button class="dash-card-link" style="background:none;border:none;" onclick="goSearch()">Search this grant →</button>
+        <span class="rec-match-badge rmb-med">Reference program</span>
+        <button class="dash-card-link" style="background:none;border:none;" onclick="goSearch()">Search live grants →</button>
       </div>
     </div>`).join('');
 
@@ -4546,7 +4575,7 @@ function saveDistrictProfile(){
       <!-- Recommended Grants -->
       <div class="dash-card">
         <div class="dash-card-header">
-          <div class="dash-card-title">⭐ Recommended Grants</div>
+          <div class="dash-card-title">📌 Key Federal Programs</div>
         </div>
         <div id="dash-recommended"></div>
       </div>
