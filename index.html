@@ -1235,29 +1235,6 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   TRUST & SAFETY SECTION
-═══════════════════════════════════════════════════════════════ */
-.trust-section { background:white; border-top:1px solid var(--gray-200); }
-.trust-header { text-align:center; max-width:680px; margin:0 auto 3rem; }
-.trust-header .section-label { color:var(--gray-400); }
-.trust-header .section-body { margin:0 auto; }
-.trust-grid {
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem;
-}
-.trust-card {
-  background:var(--gray-50); border:1px solid var(--gray-200); border-radius:14px;
-  padding:1.75rem 1.6rem; transition:border-color .2s;
-}
-.trust-card:hover { border-color:var(--gray-300); }
-.trust-icon-wrap {
-  width:46px; height:46px; border-radius:10px; background:white;
-  border:1px solid var(--gray-200); display:flex; align-items:center;
-  justify-content:center; font-size:1.25rem; margin-bottom:1.1rem;
-}
-.trust-card h3 { font-family:'Lora',serif; font-size:1.04rem; font-weight:700; color:var(--navy); margin-bottom:.6rem; }
-.trust-card p { font-size:.86rem; color:var(--gray-600); line-height:1.65; }
-
 /* compact footer reused on app pages (search/draft/dashboard/profile) */
 .app-footer {
   background:var(--gray-50); border-top:1px solid var(--gray-200);
@@ -1487,6 +1464,23 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   padding:.65rem .9rem; margin-bottom:1rem; font-size:.78rem;
   color:var(--gray-600); line-height:1.6;
 }
+.modal-error {
+  display:none; background:var(--red-light); border:1px solid #fecaca;
+  border-radius:8px; padding:.65rem .9rem; font-size:.8rem;
+  color:var(--red); line-height:1.55; margin-top:.25rem;
+}
+
+/* Sign-in entry point, shown only while signed out. Swaps with .nav-user-pill */
+.nav-signin-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  background:transparent; border:1.5px solid var(--blue-accent);
+  color:var(--blue); border-radius:100px; padding:6px 16px;
+  font-family:'DM Sans',sans-serif; font-size:.82rem; font-weight:600;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.nav-signin-btn:hover { background:var(--blue); border-color:var(--blue); color:white; }
+.nav-signin-btn.hide { display:none; }
+
 </style>
 </head>
 <body>
@@ -1504,12 +1498,11 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   <ul class="nav-links">
     <li><a onclick="scrollToSection('problem')">The Problem</a></li>
     <li><a onclick="scrollToSection('solution')">How It Works</a></li>
-    <li><a onclick="scrollToSection('trust')">Trust &amp; Safety</a></li>
     <li><a onclick="scrollToSection('pilot')">Start a Pilot</a></li>
     <li id="nav-dashboard-link" style="display:none"><a onclick="goDashboard()">My Dashboard</a></li>
     <li id="nav-profile-link" style="display:none"><a onclick="goProfile()">District Profile</a></li>
+    <li><button class="nav-signin-btn" id="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button><div class="nav-user-pill" id="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar" id="nav-user-avatar">?</div><span id="nav-user-name">Account</span></div></li>
     <li><a class="nav-cta" onclick="goSearch()">Get Started</a></li>
-    <li><div class="nav-user-pill" id="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar" id="nav-user-avatar">?</div><span id="nav-user-name">Account</span></div></li>
   </ul>
 </nav>
 
@@ -1579,43 +1572,6 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   </div>
 </section>
 
-<section class="trust-section" id="trust">
-  <div class="container">
-    <div class="trust-header reveal">
-      <div class="section-label">Trust &amp; Safety</div>
-      <h2 class="section-title">Built responsibly, for people who manage public funds.</h2>
-      <p class="section-body">The Money Website is designed with the realities of school district work in mind — data sensitivity, budget accountability, and the need for every application to hold up to scrutiny.</p>
-    </div>
-    <div class="trust-grid reveal">
-      <div class="trust-card">
-        <div class="trust-icon-wrap">🔒</div>
-        <h3>Data Privacy</h3>
-        <p>Your district's information — enrollment data, demographics, and funding goals — is used only to improve grant matching accuracy and personalize draft recommendations. We do not sell or share district data with third parties.</p>
-      </div>
-      <div class="trust-card">
-        <div class="trust-icon-wrap">👀</div>
-        <h3>Human Review</h3>
-        <p>AI-generated grant drafts are a starting point, not a final product. Every draft should be reviewed, fact-checked, and approved by district staff — including your grant coordinator or finance office — before submission.</p>
-      </div>
-      <div class="trust-card">
-        <div class="trust-icon-wrap">✅</div>
-        <h3>Verified Grant Sources</h3>
-        <p>Every grant listed includes a link to its official source, current deadline, eligibility requirements, and a last-updated date, so your team can confirm details directly with the funding agency before applying.</p>
-      </div>
-      <div class="trust-card">
-        <div class="trust-icon-wrap">⚖️</div>
-        <h3>No Funding Guarantee</h3>
-        <p>The Money Website is designed to improve efficiency and application quality, helping your team find more relevant opportunities and submit stronger applications. It does not guarantee that any application will be funded.</p>
-      </div>
-      <div class="trust-card">
-        <div class="trust-icon-wrap">🏫</div>
-        <h3>Built for TK-12</h3>
-        <p>This platform is built specifically for the people who manage school district funding — superintendents, finance officers, grant coordinators, and administrators — not adapted from a general-purpose business tool.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <section class="cta-section" id="pilot">
   <div class="container cta-inner">
     <div class="cta-badge">Free Pilot Program</div>
@@ -1635,7 +1591,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 <footer>
   <div class="footer-inner">
     <div class="footer-logo">The Money Website</div>
-    <ul class="footer-links"><li><a onclick="scrollToSection('trust')" style="cursor:pointer;">Trust &amp; Safety</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Use</a></li><li><a href="#">Contact</a></li></ul>
+    <ul class="footer-links"><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Use</a></li><li><a href="#">Contact</a></li></ul>
     <p class="footer-copy">© 2026 The Money Website. Built for TK-12 districts.</p>
   </div>
 </footer>
@@ -1660,6 +1616,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
       <span class="current">Grant Search</span>
     </div>
     <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button>
       <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
       <span class="nav-back-btn" onclick="goHome()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1787,7 +1744,6 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   <div class="app-footer-inner">
     <span class="app-footer-copy">© 2026 The Money Website. Built for TK-12 districts.</span>
     <ul class="app-footer-links">
-      <li><a onclick="goTrustSection()">Trust &amp; Safety</a></li>
       <li><a onclick="goHome()">Privacy Policy</a></li>
       <li><a onclick="goHome()">Terms of Use</a></li>
     </ul>
@@ -1812,10 +1768,6 @@ function goProfile()   { buildProfilePage(); showPage('page-profile'); updateNav
 function scrollToSection(id) {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior:'smooth' });
-}
-function goTrustSection(){
-  goHome();
-  setTimeout(()=>scrollToSection('trust'),80);
 }
 
 /* ── USER ACCOUNT STATE ───────────────────────────────────────── */
@@ -3734,28 +3686,52 @@ function filterCards(btn,type){
 // from the endpoint URL (the part after /f/). Then replace the value below.
 const FORMSPREE_FORM_ID = 'xnjekwza';
 
+// Resolves to { ok:boolean, reason?:string, skipped?:boolean } so the modal
+// can confirm or report failure rather than claiming success blindly.
 function sendLeadToFormspree(lead){
   if (FORMSPREE_FORM_ID === 'YOUR_FORM_ID_HERE') {
-    console.warn('[TMW] Lead NOT sent — Formspree form ID not configured yet.');
-    console.warn('[TMW] Edit index.html and set FORMSPREE_FORM_ID to enable lead capture.');
-    return;
+    console.warn('[TMW] Lead capture SKIPPED — FORMSPREE_FORM_ID is still the placeholder.');
+    console.warn('[TMW] Set it near the top of the script block to enable real submissions.');
+    return Promise.resolve({ ok:true, skipped:true });
   }
-  fetch('https://formspree.io/f/' + FORMSPREE_FORM_ID, {
+  const endpoint = 'https://formspree.io/f/' + FORMSPREE_FORM_ID;
+  const payload = {
+    name: lead.name,
+    district: lead.district,
+    job_title: lead.title,
+    email: lead.email,
+    _subject: 'New lead from The Money Website: ' + lead.district,
+  };
+  console.log('[TMW] Lead submission ATTEMPT -> ' + endpoint);
+  console.log('[TMW] Payload:', JSON.stringify({
+    name: payload.name, district: payload.district,
+    job_title: payload.job_title, email: payload.email }));
+
+  return fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({
-      name: lead.name,
-      district: lead.district,
-      job_title: lead.title,
-      email: lead.email,
-      _subject: 'New lead from The Money Website: ' + lead.district,
-    })
+    body: JSON.stringify(payload)
   })
-  .then(r => {
-    if (r.ok) console.log('[TMW] ✓ Lead sent to Formspree successfully');
-    else console.warn('[TMW] Formspree returned HTTP', r.status, '- lead may not have sent');
+  .then(function(r){
+    return r.json().catch(function(){ return null; }).then(function(body){
+      if (r.ok) {
+        console.log('[TMW] ✓ Lead submission SUCCEEDED (HTTP ' + r.status + ')');
+        return { ok:true };
+      }
+      // Formspree returns {errors:[{message:...}]} on rejection
+      var detail = '';
+      if (body && body.errors && body.errors.length) {
+        detail = body.errors.map(function(e){ return e.message; }).join('; ');
+      }
+      console.error('[TMW] ✗ Lead submission FAILED — HTTP ' + r.status +
+                    (detail ? ' — ' + detail : ''));
+      return { ok:false, reason: detail || ('HTTP ' + r.status) };
+    });
   })
-  .catch(err => console.warn('[TMW] Formspree submission failed:', err.message));
+  .catch(function(err){
+    console.error('[TMW] ✗ Lead submission FAILED — network error: ' + err.message);
+    return { ok:false, reason:'could not reach Formspree' };
+  });
 }
 
 /* ── MODAL ────────────────────────────────────────────────────── */
@@ -3773,6 +3749,21 @@ function openModal(){
   document.getElementById('account-modal').classList.add('open');
   document.body.style.overflow='hidden';
   setTimeout(()=>document.getElementById('mf-name').focus(),300);
+}
+
+// Opened directly from the nav rather than by hitting a gated action, so
+// clear any stale pending action - on success we just go to the dashboard.
+function openSignIn(){
+  pendingAction = null;
+  pendingArgs   = null;
+  openModal();
+  // Reframe the copy: nothing is being "saved" yet in this entry path.
+  const t = document.getElementById('modal-title-text');
+  const s = document.getElementById('modal-sub-text');
+  if (t) t.textContent = 'Create Your Free Account';
+  if (s) s.textContent = 'Save grant searches, store draft applications, and get ' +
+                         'notified about new funding opportunities for your district.';
+  console.log('[TMW] Sign-in modal opened from nav');
 }
 
 function openProfileModal(){
@@ -3820,19 +3811,38 @@ function validateModal(){
 function submitAccount(){
   if(!validateModal()) return;
   const btn=document.getElementById('btn-create-acct');
+  const errEl=document.getElementById('modal-error');
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
   btn.classList.add('loading');
 
-  setTimeout(()=>{
-    const name=document.getElementById('mf-name').value.trim();
-    const district=document.getElementById('mf-district').value.trim();
-    const title=document.getElementById('mf-title').value.trim();
-    const email=document.getElementById('mf-email').value.trim();
+  const name=document.getElementById('mf-name').value.trim();
+  const district=document.getElementById('mf-district').value.trim();
+  const title=document.getElementById('mf-title').value.trim();
+  const email=document.getElementById('mf-email').value.trim();
+  const lead={name,district,title,email};
 
-    currentUser={name,district,title,email};
+  // Profile edits are local only - nothing to send.
+  const work = (modalMode==='edit')
+    ? Promise.resolve({ ok:true, skipped:true })
+    : sendLeadToFormspree(lead);
+
+  work.then(function(result){
     btn.classList.remove('loading');
-    updateNavUser();
 
-    if(modalMode!=='edit') sendLeadToFormspree(currentUser);
+    // Honest failure: do NOT show a success screen for a submission that
+    // never arrived. Keep the form filled in so they can simply retry.
+    if(!result.ok){
+      if(errEl){
+        errEl.textContent = "We couldn't send your details just now (" + result.reason +
+                            "). Please check your connection and try again.";
+        errEl.style.display='block';
+      }
+      console.warn('[TMW] Account creation halted — lead was not captured.');
+      return;
+    }
+
+    currentUser=lead;
+    updateNavUser();
 
     if(modalMode==='edit'){
       document.getElementById('modal-form-state').style.display='none';
@@ -3849,16 +3859,20 @@ function submitAccount(){
     // show success
     document.getElementById('modal-form-state').style.display='none';
     document.getElementById('modal-success-state').classList.add('show');
-    document.getElementById('modal-success-msg').textContent=`Welcome, ${name.split(' ')[0]}! Your account has been created. Your grant searches and drafts are now saved automatically.`;
+    document.getElementById('modal-success-msg').textContent =
+      `Thanks, ${name.split(' ')[0]} — we'll be in touch. Your grant searches and drafts are now saved automatically.`;
     document.querySelector('#modal-success-state .btn-modal-success').textContent='Go to My Dashboard';
-  },1500);
+  });
 }
 
 function updateNavUser(){
   if(!currentUser){
     document.querySelectorAll('.nav-user-pill').forEach(p=>p.classList.remove('show'));
+    document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.remove('hide'));
     return;
   }
+  // Signed in: hide the sign-in buttons, reveal the account pills.
+  document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.add('hide'));
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const firstName=currentUser.name.split(' ')[0];
   // Update every pill in every page nav
@@ -4302,6 +4316,7 @@ function saveDistrictProfile(){
       <span class="current">Draft Generator</span>
     </div>
     <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button>
       <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
       <span class="nav-back-btn" onclick="goSearch()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -4393,7 +4408,6 @@ function saveDistrictProfile(){
   <div class="app-footer-inner">
     <span class="app-footer-copy">© 2026 The Money Website. Built for TK-12 districts.</span>
     <ul class="app-footer-links">
-      <li><a onclick="goTrustSection()">Trust &amp; Safety</a></li>
       <li><a onclick="goHome()">Privacy Policy</a></li>
       <li><a onclick="goHome()">Terms of Use</a></li>
     </ul>
@@ -4432,6 +4446,8 @@ function saveDistrictProfile(){
           <label for="mf-email">Work Email</label>
           <input type="email" id="mf-email" placeholder="jsmith@rialto.k12.ca.us" autocomplete="email">
         </div>
+
+        <div class="modal-error" id="modal-error"></div>
 
         <button class="btn-modal-primary" onclick="submitAccount()" id="btn-create-acct">
           <span class="btn-text" id="btn-create-text">Create Free Account</span>
@@ -4593,7 +4609,6 @@ function saveDistrictProfile(){
   <div class="app-footer-inner">
     <span class="app-footer-copy">© 2026 The Money Website. Built for TK-12 districts.</span>
     <ul class="app-footer-links">
-      <li><a onclick="goTrustSection()">Trust &amp; Safety</a></li>
       <li><a onclick="goHome()">Privacy Policy</a></li>
       <li><a onclick="goHome()">Terms of Use</a></li>
     </ul>
@@ -4617,6 +4632,7 @@ function saveDistrictProfile(){
       <span class="current">District Profile</span>
     </div>
     <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button>
       <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
       <span class="nav-back-btn" onclick="goDashboard()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -4844,7 +4860,6 @@ function saveDistrictProfile(){
   <div class="app-footer-inner">
     <span class="app-footer-copy">© 2026 The Money Website. Built for TK-12 districts.</span>
     <ul class="app-footer-links">
-      <li><a onclick="goTrustSection()">Trust &amp; Safety</a></li>
       <li><a onclick="goHome()">Privacy Policy</a></li>
       <li><a onclick="goHome()">Terms of Use</a></li>
     </ul>
