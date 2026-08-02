@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Money Website – AI-Powered Grant Discovery for TK-12 Districts</title>
+<title>The Money Website | AI Powered Grant Discovery for TK-12 Districts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -460,7 +460,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 /* doc sections column */
 .draft-sections-col {}
 
-/* section card — the editor */
+/* section card: the editor */
 .doc-section-card {
   background:white; border-radius:14px; border:1px solid var(--gray-200);
   box-shadow:0 1px 6px rgba(0,0,0,.04);
@@ -556,7 +556,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   AI FEEDBACK PANEL — Grant Coach
+   AI FEEDBACK PANEL: Grant Coach
 ═══════════════════════════════════════════════════════════════ */
 
 /* Override draft page body to 3-col: sections | feedback | sidebar */
@@ -1251,7 +1251,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 
 
 /* ═══════════════════════════════════════════════════════════════
-   GRANT CARD v2 — Verification & District Fit
+   GRANT CARD v2: Verification & District Fit
 ═══════════════════════════════════════════════════════════════ */
 .gc-section-label {
   font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
@@ -1348,7 +1348,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 
 
 /* ═══════════════════════════════════════════════════════════════
-   DISTRICT PROFILE — Onboarding Upgrade
+   DISTRICT PROFILE: Onboarding Upgrade
 ═══════════════════════════════════════════════════════════════ */
 .profile-intro {
   background:white; border:1px solid var(--gray-200); border-radius:12px;
@@ -1427,7 +1427,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 }
 
 
-/* ── Live fetch fallback — honest sample labeling ─────────────── */
+/* ── Live fetch fallback: honest sample labeling ─────────────── */
 .live-fallback-banner {
   background:#fffbeb; border:1.5px solid #fde68a; border-radius:12px;
   padding:1.25rem 1.5rem; margin:.5rem 0;
@@ -1501,6 +1501,10 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   cursor:pointer; transition:all .2s;
 }
 .profile-card-signout:hover { background:rgba(239,68,68,.25); border-color:rgba(239,68,68,.6); color:#fff; }
+.stats-source {
+  text-align:center; font-size:.75rem; color:var(--gray-400);
+  margin-top:1.5rem; letter-spacing:.01em;
+}
 </style>
 </head>
 <body>
@@ -1528,7 +1532,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 <section class="hero">
   <div class="hero-badge"><span>🏫</span> Built for TK-12 School Districts</div>
   <h1 class="hero-h1">Find and write school grants <em>faster.</em></h1>
-  <p class="hero-sub">The Money Website helps school districts discover relevant funding opportunities and draft stronger grant applications with less staff time.</p>
+  <p class="hero-sub">The Money Website helps school districts discover relevant funding opportunities and draft stronger grant applications.</p>
   <div class="hero-actions">
     <button class="btn-primary" onclick="goSearch()">
       Start Grant Search
@@ -1539,28 +1543,17 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
       See How It Works
     </button>
   </div>
-  <div class="hero-trust">
-    <p>Trusted by district offices across the country</p>
-    <div class="trust-logos">
-      <span class="trust-logo-item">Riverside USD</span>
-      <span class="trust-logo-item">•</span>
-      <span class="trust-logo-item">Kern County Schools</span>
-      <span class="trust-logo-item">•</span>
-      <span class="trust-logo-item">Twin Falls District</span>
-      <span class="trust-logo-item">•</span>
-      <span class="trust-logo-item">Mesa Unified</span>
-    </div>
-  </div>
 </section>
 
 <div class="stats-strip">
   <div class="container">
     <div class="stats-grid">
-      <div class="stat-item reveal"><div class="stat-number">$180B+</div><div class="stat-label">In federal &amp; foundation grants available annually for TK-12</div></div>
-      <div class="stat-item reveal"><div class="stat-number">73%</div><div class="stat-label">Of eligible districts never apply due to limited staff capacity</div></div>
-      <div class="stat-item reveal"><div class="stat-number">40 hrs</div><div class="stat-label">Average time to research and draft a single grant application</div></div>
-      <div class="stat-item reveal"><div class="stat-number">3x</div><div class="stat-label">More applications submitted by districts using AI-assisted tools</div></div>
+      <div class="stat-item reveal"><div class="stat-number" id="hs-open">&middot;&middot;&middot;</div><div class="stat-label">Federal education grants open for application right now</div></div>
+      <div class="stat-item reveal"><div class="stat-number" id="hs-agencies">&middot;&middot;&middot;</div><div class="stat-label">Federal agencies funding them</div></div>
+      <div class="stat-item reveal"><div class="stat-number" id="hs-closing">&middot;&middot;&middot;</div><div class="stat-label">Closing within the next 30 days</div></div>
+      <div class="stat-item reveal"><div class="stat-number" id="hs-programs">12</div><div class="stat-label">Key federal programs tracked in our reference library</div></div>
     </div>
+    <p class="stats-source" id="hs-source">Checking Grants.gov for current figures</p>
   </div>
 </div>
 
@@ -1568,10 +1561,10 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   <div class="container">
     <div class="section-label">The Challenge</div>
     <h2 class="section-title" style="color:white;">Funding is out there.<br>Finding it is the problem.</h2>
-    <p class="section-body">Most TK-12 districts are leaving money on the table — not because they don't qualify, but because they don't have the time, staff, or systems to pursue it consistently.</p>
+    <p class="section-body">Most TK-12 districts are leaving money on the table, not because they don't qualify, but because they don't have the time, staff, or systems to pursue it consistently.</p>
     <div class="problem-grid reveal">
       <div class="problem-card"><div class="problem-card-number">01</div><h3>Too Little Time</h3><p>Administrators and grant coordinators are already stretched thin. Researching grants across hundreds of sources takes hours districts simply don't have.</p></div>
-      <div class="problem-card"><div class="problem-card-number">02</div><h3>Not Enough Staff</h3><p>Many districts have one part-time grant writer — or none at all. Smaller districts compete against well-resourced applicants with dedicated development offices.</p></div>
+      <div class="problem-card"><div class="problem-card-number">02</div><h3>Not Enough Staff</h3><p>Many districts have one part time grant writer, or none at all. Smaller districts compete against well-resourced applicants with dedicated development offices.</p></div>
       <div class="problem-card"><div class="problem-card-number">03</div><h3>No Central Source</h3><p>Grant opportunities are scattered across government portals, foundations, and newsletters. There's no single place to find what your district actually qualifies for.</p></div>
     </div>
   </div>
@@ -1581,12 +1574,12 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   <div class="container">
     <div class="solution-header reveal">
       <div><div class="section-label">How It Works</div><h2 class="section-title">One platform. From discovery to submission.</h2></div>
-      <div><p class="section-body">The Money Website combines a curated grant database with AI-powered drafting tools — purpose-built for TK-12 district workflows.</p></div>
+      <div><p class="section-body">The Money Website combines a curated grant database with AI-powered drafting tools, purpose built for TK-12 district workflows.</p></div>
     </div>
     <div class="solution-cards">
       <div class="sol-card reveal"><div class="sol-icon">🔍</div><h3>Smart Grant Matching</h3><p>Our AI indexes thousands of federal, state, and private grants and surfaces the ones most relevant to your district's size, demographics, and priorities.</p><ul class="sol-features"><li>Filtered by district eligibility criteria</li><li>Alerts for new matching opportunities</li><li>Deadline tracking and pipeline view</li></ul></div>
-      <div class="sol-card reveal"><div class="sol-icon">✍️</div><h3>AI Grant Drafting</h3><p>Generate strong first drafts from your district data — needs statements, program descriptions, and budget narratives — in a fraction of the usual time.</p><ul class="sol-features"><li>Pre-filled with your district's data</li><li>Aligned to each grant's rubric and goals</li><li>Editable in a collaborative workspace</li></ul></div>
-      <div class="sol-card reveal"><div class="sol-icon">📋</div><h3>Application Feedback</h3><p>Before you submit, our AI reviews your application against funder priorities and common review criteria — and tells you what to strengthen.</p><ul class="sol-features"><li>Scored against funder language</li><li>Section-by-section improvement notes</li><li>Equity and compliance checklist</li></ul></div>
+      <div class="sol-card reveal"><div class="sol-icon">✍️</div><h3>AI Grant Drafting</h3><p>Generate strong first drafts from your district data, including needs statements, program descriptions, and budget narratives, in a fraction of the usual time.</p><ul class="sol-features"><li>Pre-filled with your district's data</li><li>Aligned to each grant's rubric and goals</li><li>Editable in a collaborative workspace</li></ul></div>
+      <div class="sol-card reveal"><div class="sol-icon">📋</div><h3>Application Feedback</h3><p>Before you submit, our AI reviews your application against funder priorities and common review criteria, then tells you what to strengthen.</p><ul class="sol-features"><li>Scored against funder language</li><li>Section-by-section improvement notes</li><li>Equity and compliance checklist</li></ul></div>
     </div>
   </div>
 </section>
@@ -1594,7 +1587,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 <section class="cta-section" id="pilot">
   <div class="container cta-inner">
     <div class="cta-badge">Free Pilot Program</div>
-    <h2>Start finding grants your district qualifies for — today.</h2>
+    <h2>Start finding grants your district qualifies for today.</h2>
     <p class="cta-sub">Join our pilot program and get full platform access for your district at no cost. We'll onboard your team and help you find your first opportunity within two weeks.</p>
     <div class="cta-actions">
       <button class="btn-white" onclick="goSearch()">
@@ -1680,12 +1673,12 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
     <div class="form-divider"></div>
     <div class="form-section-label">Needs &amp; Budget</div>
     <div class="form-grid">
-      <div class="field"><label for="needs">Brief Description of District Needs <span class="req">*</span></label><textarea id="needs" placeholder="Describe your district's current challenges, student demographics, program gaps, or specific initiatives you're hoping to fund…"></textarea><span class="field-hint">Be specific — this helps match you to grants that align with your district's unique context.</span></div>
+      <div class="field"><label for="needs">Brief Description of District Needs <span class="req">*</span></label><textarea id="needs" placeholder="Describe your district's current challenges, student demographics, program gaps, or specific initiatives you're hoping to fund…"></textarea><span class="field-hint">Be specific. This helps match you to grants that align with your district's unique context.</span></div>
       <div class="field"><label for="amount">Estimated Funding Amount Needed <span class="req">*</span></label><div class="amount-wrap"><span class="amount-prefix">$</span><input type="text" id="amount" placeholder="e.g. 250,000"></div><span class="field-hint">Enter your approximate target. We'll surface grants within a reasonable range.</span></div>
     </div>
 
     <div class="submit-row">
-      <span class="submit-note"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.25"/><path d="M7 5v2.5L8.5 9" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg> Matching typically takes 5–10 seconds</span>
+      <span class="submit-note"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.25"/><path d="M7 5v2.5L8.5 9" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg> Matching typically takes 5 to 10 seconds</span>
       <button class="btn-find" id="find-btn" onclick="runSearch()">
         <span class="btn-label">Find Grants &nbsp;🔍</span>
         <span class="spinner"></span>
@@ -1815,9 +1808,9 @@ function persistSession(){
 function restoreSession(){
   try {
     const raw = localStorage.getItem(TMW_STORAGE_KEY);
-    if(!raw){ console.log('[TMW] No saved session — starting fresh.'); return; }
+    if(!raw){ console.log('[TMW] No saved session: starting fresh.'); return; }
     const d = JSON.parse(raw);
-    if(!d || d.v !== 1){ console.warn('[TMW] Saved session has an unknown format — ignoring.'); return; }
+    if(!d || d.v !== 1){ console.warn('[TMW] Saved session has an unknown format: ignoring.'); return; }
     if(d.currentUser) currentUser = d.currentUser;
     if(Array.isArray(d.searches)) accountData.searches = d.searches;
     if(Array.isArray(d.drafts))   accountData.drafts   = d.drafts;
@@ -1843,7 +1836,7 @@ function signOut(){
   document.querySelectorAll('.nav-user-pill').forEach(p=>p.classList.remove('show'));
   document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.remove('hide'));
   document.querySelectorAll('.btn-signout').forEach(b=>b.classList.remove('show'));
-  console.log('[TMW] Signed out — saved session cleared from this browser.');
+  console.log('[TMW] Signed out: saved session cleared from this browser.');
   goHome();
 }
 
@@ -1964,7 +1957,7 @@ window.TMW_listCuratedUrls = function(){
     lines.push('   REASON: ' + GRANT_URL_FLAGS[n].replace('NEEDS_VERIFICATION: ',''));
   });
   lines.push('');
-  lines.push('--- NOT FLAGGED (' + clean.length + ') — still worth spot-checking ---');
+  lines.push('--- NOT FLAGGED (' + clean.length + '): still worth spot-checking ---');
   clean.forEach(n => { lines.push(n); lines.push('   ' + GRANT_URLS[n]); });
   lines.push('');
   lines.push('--- PLAIN URL LIST (paste into a link checker) ---');
@@ -2023,7 +2016,7 @@ function applyDistrictProfileToSearch(){
     if(resolvedGoal) goalSelect.value=resolvedGoal;
   }
 
-  // Show saved priorities as reference chips — expand Teacher Training into its three sub-categories
+  // Show saved priorities as reference chips: expand Teacher Training into its three sub-categories
   const hintEl=document.getElementById('saved-priorities-hint');
   if(hintEl){
     if(districtProfile.fundingPriorities && districtProfile.fundingPriorities.length){
@@ -2056,7 +2049,7 @@ function personalizedPriorityFit(goal){
   const p=districtProfile;
   if(p && p.fundingPriorities && p.fundingPriorities.length){
     const matched=p.fundingPriorities.includes(goal)?goal:p.fundingPriorities[0];
-    return `Supports <strong>${matched}</strong> — one of ${p.fundingPriorities.length} funding ${p.fundingPriorities.length===1?'priority':'priorities'} your district flagged in its profile.`;
+    return `Supports <strong>${matched}</strong>: one of ${p.fundingPriorities.length} funding ${p.fundingPriorities.length===1?'priority':'priorities'} your district flagged in its profile.`;
   }
   return `Aligns with your selected funding category: <strong>${goal}</strong>.`;
 }
@@ -2079,18 +2072,18 @@ function personalizedAngle(g){
   const p=districtProfile;
   if(p && p.challenges){
     const snip=p.challenges.length>100?p.challenges.slice(0,100)+'…':p.challenges;
-    return `Lead your narrative with your district's stated challenge — "${snip}" — and tie it directly to this funder's stated priorities for maximum reviewer impact.`;
+    return `Lead your narrative with your district's stated challenge: "${snip}": and tie it directly to this funder's stated priorities for maximum reviewer impact.`;
   }
   return `Strengthen this application by leading with specific student outcome data, a clear implementation timeline, and measurable goals tied to this funder's priorities.`;
 }
 
 /* ── DIRECT GRANT PROGRAM URLS ────────────────────────────────── */
-// Keyed by exact grant name — links go directly to the grant program page, not the funder homepage
+// Keyed by exact grant name: links go directly to the grant program page, not the funder homepage
 const GRANT_URLS = {
-  "STOP School Violence Act – Prevention Program":"https://cops.usdoj.gov/stopschoolviolence",
-  "E-Rate Program – Schools and Libraries":"https://www.usac.org/e-rate/",
+  "STOP School Violence Act: Prevention Program":"https://cops.usdoj.gov/stopschoolviolence",
+  "E-Rate Program: Schools and Libraries":"https://www.usac.org/e-rate/",
   "EPA Clean School Bus Program":"https://www.epa.gov/cleanschoolbus",
-  "NEA Art Works – Learning in the Arts":"https://www.arts.gov/grants/art-works",
+  "NEA Art Works: Learning in the Arts":"https://www.arts.gov/grants/art-works",
   "Carl D. Perkins Career and Technical Education Act (Perkins V)":"https://www.ed.gov/laws-and-policy/adult-education-laws-and-policy/perkins-v",
   "IDEA Part B Grants to States (Formula)":"https://sites.ed.gov/idea/",
   "IDEA Preschool Grants (Section 619)":"https://sites.ed.gov/idea/",
@@ -2110,7 +2103,7 @@ function getSourceUrl(g){
 
 function getLastUpdated(g){
   const seed=(g.name.length*7+g.funder.length*3)%50;
-  const daysAgo=6+seed; // 6–55 days ago, deterministic per grant
+  const daysAgo=6+seed; // 6 to 55 days ago, deterministic per grant
   const d=new Date(2026,5,19); // site "today" = June 19, 2026
   d.setDate(d.getDate()-daysAgo);
   return d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
@@ -2148,7 +2141,7 @@ function openExternal(url, btnEl){
       navigator.clipboard.writeText(url);
       if(btnEl){
         const orig=btnEl.textContent;
-        btnEl.textContent='✓ Link copied — paste into a new tab';
+        btnEl.textContent='✓ Link copied: paste into a new tab';
         setTimeout(()=>{ btnEl.textContent=orig; },3000);
       }
     } catch(e){}
@@ -2164,35 +2157,35 @@ let lastSearchCtx = null;
 
 const GRANTS_DB = {
   "School Safety":[
-    {name:"STOP School Violence Act – Prevention Program",funder:"Dept. of Justice / COPS Office",type:"federal",amount:"$500,000 – $2,000,000",deadline:"April 10, 2026",deadlineSoon:false,score:96,difficulty:"Hard",eligibility:"State and local governments and school districts. Requires a detailed threat assessment plan, law enforcement partnership MOA, and evidence-based program selection.",whyMatch:"Your district's safety improvement goals closely align with this program's prevention and early intervention framework. Districts with documented safety incidents receive scoring preference.",desc:"Funds school districts to implement violence prevention programs, behavioral threat assessment teams, anonymous tip lines, training for staff, and campus security improvements."},
-    {name:"School Emergency Response to Violence (SERV)",funder:"U.S. Dept. of Education",type:"federal",amount:"Up to $1,000,000",deadline:"Rolling – needs-based",deadlineSoon:false,score:91,difficulty:"Medium",eligibility:"Public K–12 LEAs that have experienced a traumatic event or demonstrate imminent risk. Rolling applications are reviewed year-round by OESE staff.",whyMatch:"This grant's flexible, rolling application window makes it highly accessible. If your district has experienced safety incidents, eligibility is strengthened significantly.",desc:"Provides funding after a traumatic or violent event to help districts recover and restore a safe learning environment. Also supports proactive violence prevention planning."}
+    {name:"STOP School Violence Act: Prevention Program",funder:"Dept. of Justice / COPS Office",type:"federal",amount:"$500,000 to $2,000,000",deadline:"April 10, 2026",deadlineSoon:false,score:96,difficulty:"Hard",eligibility:"State and local governments and school districts. Requires a detailed threat assessment plan, law enforcement partnership MOA, and evidence-based program selection.",whyMatch:"Your district's safety improvement goals closely align with this program's prevention and early intervention framework. Districts with documented safety incidents receive scoring preference.",desc:"Funds school districts to implement violence prevention programs, behavioral threat assessment teams, anonymous tip lines, training for staff, and campus security improvements."},
+    {name:"School Emergency Response to Violence (SERV)",funder:"U.S. Dept. of Education",type:"federal",amount:"Up to $1,000,000",deadline:"Rolling: needs-based",deadlineSoon:false,score:91,difficulty:"Medium",eligibility:"Public K12 LEAs that have experienced a traumatic event or demonstrate imminent risk. Rolling applications are reviewed year-round by OESE staff.",whyMatch:"This grant's flexible, rolling application window makes it highly accessible. If your district has experienced safety incidents, eligibility is strengthened significantly.",desc:"Provides funding after a traumatic or violent event to help districts recover and restore a safe learning environment. Also supports proactive violence prevention planning."}
   ],
   "Technology":[
-    {name:"E-Rate Program – Schools and Libraries",funder:"FCC / Universal Service Fund",type:"federal",amount:"Up to 90% discount on connectivity",deadline:"Annual – January window",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K–12 schools and districts. Discount level determined by student free/reduced lunch percentage. Title I schools may qualify for up to 90% discount.",whyMatch:"Every public school district qualifies for E-Rate. Given your district's size and demographics, you likely qualify for significant discounts on broadband and network infrastructure.",desc:"The federal E-Rate program provides discounts on broadband connectivity, network infrastructure, and internal connections to K–12 schools, especially in high-poverty districts."}
+    {name:"E-Rate Program: Schools and Libraries",funder:"FCC / Universal Service Fund",type:"federal",amount:"Up to 90% discount on connectivity",deadline:"Annual: January window",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K12 schools and districts. Discount level determined by student free/reduced lunch percentage. Title I schools may qualify for up to 90% discount.",whyMatch:"Every public school district qualifies for E-Rate. Given your district's size and demographics, you likely qualify for significant discounts on broadband and network infrastructure.",desc:"The federal E-Rate program provides discounts on broadband connectivity, network infrastructure, and internal connections to K12 schools, especially in high-poverty districts."}
   ],
   "Aspiring Teacher Pathways":[
-    {name:"Teacher Quality Partnership Grant (TQP)",funder:"U.S. Dept. of Education",type:"federal",amount:"$500,000 – $2,500,000 (5 years)",deadline:"May 15, 2026",deadlineSoon:false,score:92,difficulty:"Hard",eligibility:"Partnerships between high-need LEAs and accredited educator preparation programs (EPPs). Requires a formal MOU with a college or university EPP prior to application.",whyMatch:"If your district has a relationship with a local university teacher prep program, TQP offers long-term, substantial funding for building a pipeline of new educators from the ground up.",desc:"Supports partnerships between high-need districts and educator preparation programs to recruit, train, and credential new teachers and school leaders."}
+    {name:"Teacher Quality Partnership Grant (TQP)",funder:"U.S. Dept. of Education",type:"federal",amount:"$500,000 to $2,500,000 (5 years)",deadline:"May 15, 2026",deadlineSoon:false,score:92,difficulty:"Hard",eligibility:"Partnerships between high-need LEAs and accredited educator preparation programs (EPPs). Requires a formal MOU with a college or university EPP prior to application.",whyMatch:"If your district has a relationship with a local university teacher prep program, TQP offers long-term, substantial funding for building a pipeline of new educators from the ground up.",desc:"Supports partnerships between high-need districts and educator preparation programs to recruit, train, and credential new teachers and school leaders."}
   ],
   "Professional Development":[
-    {name:"NEA Foundation Learning & Leadership Grant",funder:"NEA Foundation",type:"foundation",amount:"$2,000 – $5,000 per educator",deadline:"Rolling quarterly",deadlineSoon:false,score:84,difficulty:"Easy",eligibility:"Active NEA members (teachers or education support professionals). Applied for by individual educators — districts can coordinate cohort applications for greater impact.",whyMatch:"Low competition, fast turnaround, and rolling deadlines make this ideal for funding individual teacher PD needs. Coordinate a cohort application for maximum district-wide impact.",desc:"Provides teachers and education support professionals with funding for professional development courses, conferences, and collaborative projects that improve classroom practice."}
+    {name:"NEA Foundation Learning & Leadership Grant",funder:"NEA Foundation",type:"foundation",amount:"$2,000 to $5,000 per educator",deadline:"Rolling quarterly",deadlineSoon:false,score:84,difficulty:"Easy",eligibility:"Active NEA members (teachers or education support professionals). Applied for by individual educators: districts can coordinate cohort applications for greater impact.",whyMatch:"Low competition, fast turnaround, and rolling deadlines make this ideal for funding individual teacher PD needs. Coordinate a cohort application for maximum district-wide impact.",desc:"Provides teachers and education support professionals with funding for professional development courses, conferences, and collaborative projects that improve classroom practice."}
   ],
   "Special Education":[
-    {name:"IDEA Part B Grants to States (Formula)",funder:"U.S. Dept. of Education – OSEP",type:"federal",amount:"Formula per-pupil allocation",deadline:"Annual Formula",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K–12 LEAs serving students with disabilities under IDEA. No competitive application — funds flow by formula through state education agencies.",whyMatch:"Every district serving students with disabilities receives IDEA Part B funds. Maximizing your use of these dollars is the single highest-impact action for special education funding.",desc:"The primary federal funding stream for special education under IDEA. Supports services, staff, evaluations, assistive technology, and IEP implementation for students with disabilities."},
-    {name:"IDEA Preschool Grants (Section 619)",funder:"U.S. Dept. of Education – OSEP",type:"federal",amount:"Formula-based per eligible child",deadline:"Annual Formula",deadlineSoon:false,score:92,difficulty:"Easy",eligibility:"Public LEAs providing special education services to children ages 3–5 with disabilities. Formula-driven with no competition required.",whyMatch:"If your district operates preschool or early childhood programs, Section 619 funding is fully accessible and directly supports your youngest learners with disabilities.",desc:"Funds special education and related services for children with disabilities ages 3–5, including inclusive preschool programming and early intervention transition services."}
+    {name:"IDEA Part B Grants to States (Formula)",funder:"U.S. Dept. of Education: OSEP",type:"federal",amount:"Formula per-pupil allocation",deadline:"Annual Formula",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K12 LEAs serving students with disabilities under IDEA. No competitive application: funds flow by formula through state education agencies.",whyMatch:"Every district serving students with disabilities receives IDEA Part B funds. Maximizing your use of these dollars is the single highest-impact action for special education funding.",desc:"The primary federal funding stream for special education under IDEA. Supports services, staff, evaluations, assistive technology, and IEP implementation for students with disabilities."},
+    {name:"IDEA Preschool Grants (Section 619)",funder:"U.S. Dept. of Education: OSEP",type:"federal",amount:"Formula-based per eligible child",deadline:"Annual Formula",deadlineSoon:false,score:92,difficulty:"Easy",eligibility:"Public LEAs providing special education services to children ages 3 to 5 with disabilities. Formula-driven with no competition required.",whyMatch:"If your district operates preschool or early childhood programs, Section 619 funding is fully accessible and directly supports your youngest learners with disabilities.",desc:"Funds special education and related services for children with disabilities ages 3 to 5, including inclusive preschool programming and early intervention transition services."}
   ],
   "Athletics":[],
   "Arts":[
-    {name:"NEA Art Works – Learning in the Arts",funder:"National Endowment for the Arts",type:"federal",amount:"$10,000 – $100,000",deadline:"February 13, 2026",deadlineSoon:false,score:94,difficulty:"Medium",eligibility:"Nonprofit organizations and government entities including K–12 school districts. Competitive — proposals are peer-reviewed and scored on artistic merit, access, and community impact.",whyMatch:"NEA's education focus aligns directly with expanding arts access in K–12. Districts serving underrepresented communities with a strong arts vision are well-positioned to compete.",desc:"Supports K–12 arts education programs that provide high-quality learning in the arts and through the arts, reaching students who lack access to arts experiences."}
+    {name:"NEA Art Works: Learning in the Arts",funder:"National Endowment for the Arts",type:"federal",amount:"$10,000 to $100,000",deadline:"February 13, 2026",deadlineSoon:false,score:94,difficulty:"Medium",eligibility:"Nonprofit organizations and government entities including K12 school districts. Competitive: proposals are peer-reviewed and scored on artistic merit, access, and community impact.",whyMatch:"NEA's education focus aligns directly with expanding arts access in K12. Districts serving underrepresented communities with a strong arts vision are well-positioned to compete.",desc:"Supports K12 arts education programs that provide high-quality learning in the arts and through the arts, reaching students who lack access to arts experiences."}
   ],
   "Infrastructure":[
-    {name:"EPA Clean School Bus Program",funder:"U.S. Environmental Protection Agency",type:"federal",amount:"Up to $375,000 per bus (EV)",deadline:"Annual competitive – Spring",deadlineSoon:false,score:81,difficulty:"Medium",eligibility:"Public school districts with diesel school buses registered in the U.S. Competitive — priority for fleets serving high-poverty, rural, or Tribal communities.",whyMatch:"If your district operates a diesel bus fleet, this program provides direct replacement funding for electric alternatives — reducing costs and emissions simultaneously.",desc:"Funds replacement of diesel school buses with zero-emission electric or propane alternatives, reducing student and community exposure to exhaust emissions."}
+    {name:"EPA Clean School Bus Program",funder:"U.S. Environmental Protection Agency",type:"federal",amount:"Up to $375,000 per bus (EV)",deadline:"Annual competitive: Spring",deadlineSoon:false,score:81,difficulty:"Medium",eligibility:"Public school districts with diesel school buses registered in the U.S. Competitive: priority for fleets serving high-poverty, rural, or Tribal communities.",whyMatch:"If your district operates a diesel bus fleet, this program provides direct replacement funding for electric alternatives: reducing costs and emissions simultaneously.",desc:"Funds replacement of diesel school buses with zero-emission electric or propane alternatives, reducing student and community exposure to exhaust emissions."}
   ],
   "Mental Health":[
-    {name:"School-Based Mental Health Services Program",funder:"U.S. Dept. of Education – OESE",type:"federal",amount:"$500,000 – $2,000,000",deadline:"June 1, 2026",deadlineSoon:false,score:96,difficulty:"Medium",eligibility:"Public K–12 LEAs and consortia demonstrating significant unmet mental health needs. Priority for high-need, rural, and Tribal communities. Requires partnerships with community mental health providers.",whyMatch:"The highest-value federal mental health grant for K–12 districts. Funds full-time licensed clinicians, counselors, and social workers embedded in schools — addressing both access and stigma.",desc:"Funds LEAs to hire and retain school-based mental health professionals, establish referral pipelines to community services, and develop comprehensive student wellness programs aligned with MTSS frameworks."},
-    {name:"Project AWARE (Advancing Wellness and Resiliency in Education)",funder:"SAMHSA",type:"federal",amount:"$400,000 – $1,500,000 (5 years)",deadline:"April 15, 2026",deadlineSoon:false,score:92,difficulty:"Hard",eligibility:"State education agencies and their partnering LEAs. Requires coordinated application with state mental health authority. Districts must demonstrate infrastructure for training school personnel in youth mental health.",whyMatch:"One of the largest sustained mental health grants available to districts. Five-year funding provides stability for building a systemic, school-wide mental wellness framework.",desc:"Supports states and school districts in increasing awareness of mental health issues, training school staff in youth mental health first aid, and connecting students to community care."}
+    {name:"School-Based Mental Health Services Program",funder:"U.S. Dept. of Education: OESE",type:"federal",amount:"$500,000 to $2,000,000",deadline:"June 1, 2026",deadlineSoon:false,score:96,difficulty:"Medium",eligibility:"Public K12 LEAs and consortia demonstrating significant unmet mental health needs. Priority for high-need, rural, and Tribal communities. Requires partnerships with community mental health providers.",whyMatch:"The highest-value federal mental health grant for K12 districts. Funds full-time licensed clinicians, counselors, and social workers embedded in schools: addressing both access and stigma.",desc:"Funds LEAs to hire and retain school-based mental health professionals, establish referral pipelines to community services, and develop comprehensive student wellness programs aligned with MTSS frameworks."},
+    {name:"Project AWARE (Advancing Wellness and Resiliency in Education)",funder:"SAMHSA",type:"federal",amount:"$400,000 to $1,500,000 (5 years)",deadline:"April 15, 2026",deadlineSoon:false,score:92,difficulty:"Hard",eligibility:"State education agencies and their partnering LEAs. Requires coordinated application with state mental health authority. Districts must demonstrate infrastructure for training school personnel in youth mental health.",whyMatch:"One of the largest sustained mental health grants available to districts. Five-year funding provides stability for building a systemic, school-wide mental wellness framework.",desc:"Supports states and school districts in increasing awareness of mental health issues, training school staff in youth mental health first aid, and connecting students to community care."}
   ],
   "Career and Technical Education":[
-    {name:"Carl D. Perkins Career and Technical Education Act (Perkins V)",funder:"U.S. Dept. of Education – OCTAE",type:"federal",amount:"Formula-based per-student allocation",deadline:"Annual Formula",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K–12 LEAs operating approved CTE programs. Formula-driven — no competitive application. Funds flow through state agencies based on enrollment in CTE courses. Secondary and postsecondary allocations are separate.",whyMatch:"Every district with a CTE program receives Perkins V funds automatically. This is your foundational CTE funding stream — ensure you are maximizing your allocation before pursuing competitive grants.",desc:"The primary federal funding source for K–12 and postsecondary CTE, supporting program equipment, credentialed instructors, work-based learning, and alignment with industry standards."}
+    {name:"Carl D. Perkins Career and Technical Education Act (Perkins V)",funder:"U.S. Dept. of Education: OCTAE",type:"federal",amount:"Formula-based per-student allocation",deadline:"Annual Formula",deadlineSoon:false,score:99,difficulty:"Easy",eligibility:"All public K12 LEAs operating approved CTE programs. Formula-driven: no competitive application. Funds flow through state agencies based on enrollment in CTE courses. Secondary and postsecondary allocations are separate.",whyMatch:"Every district with a CTE program receives Perkins V funds automatically. This is your foundational CTE funding stream: ensure you are maximizing your allocation before pursuing competitive grants.",desc:"The primary federal funding source for K12 and postsecondary CTE, supporting program equipment, credentialed instructors, work-based learning, and alignment with industry standards."}
   ],
 };
 
@@ -2204,7 +2197,7 @@ function buildDraft(g, district, state, students, goal, needs) {
   const nSnip = needs ? needs.slice(0,120)+(needs.length>120?'…':'') : 'documented program and facility needs';
   const exec = `<p>${d}, a public school district serving ${sStr} across ${state}, respectfully submits this application to the ${g.funder} for consideration under the <strong>${g.name}</strong> program. This grant represents a critical opportunity to advance the district's strategic priority of strengthening ${goal.toLowerCase()} programs and closing persistent equity gaps that limit student access and achievement.</p><p>With a total funding request aligned to the award range of <strong>${g.amount}</strong>, ${d} has developed a comprehensive implementation plan that directly addresses funder priorities, leverages existing district infrastructure, and commits to measurable outcomes within the grant period. District leadership, board of trustees, and community stakeholders are fully aligned behind this initiative.</p>`;
   const need = `<p>${d} serves a diverse student population in which approximately 58% of students qualify for free or reduced-price lunch, 24% are English Learners, and 12% receive special education services. Despite strong community support for education, the district has faced persistent resource constraints that have limited its ability to fully develop ${goal.toLowerCase()} programming at the level students deserve.</p><p>A recent district needs assessment identified the following priority gaps: ${nSnip}. These findings are consistent with state and national data showing that high-need districts like ${d} consistently face greater barriers to program quality and student access than their more affluent counterparts.</p><p>Without targeted external investment, the district projects that these gaps will widen over the next three years, particularly as enrollment continues to grow and operating budgets remain constrained by declining per-pupil state allocations.</p>`;
-  const goals = `<p>The primary goals of this grant-funded initiative are structured around three interconnected priorities that directly respond to the criteria outlined in this funding opportunity:</p><p><strong>Goal 1 — Expand Access:</strong> Increase the number of students participating in high-quality ${goal.toLowerCase()} programs by at least 35% within the first year of implementation, with a focus on students from underrepresented populations.</p><p><strong>Goal 2 — Build Capacity:</strong> Train and support a minimum of 25 district staff members to design, deliver, and sustain ${goal.toLowerCase()} programming beyond the grant period through embedded professional development and coaching.</p><p><strong>Goal 3 — Improve Outcomes:</strong> Demonstrate measurable improvement in student engagement, academic performance, and program completion rates through quarterly data collection and annual third-party evaluation aligned with funder reporting requirements.</p>`;
+  const goals = `<p>The primary goals of this grant-funded initiative are structured around three interconnected priorities that directly respond to the criteria outlined in this funding opportunity:</p><p><strong>Goal 1, Expand Access:</strong> Increase the number of students participating in high-quality ${goal.toLowerCase()} programs by at least 35% within the first year of implementation, with a focus on students from underrepresented populations.</p><p><strong>Goal 2, Build Capacity:</strong> Train and support a minimum of 25 district staff members to design, deliver, and sustain ${goal.toLowerCase()} programming beyond the grant period through embedded professional development and coaching.</p><p><strong>Goal 3, Improve Outcomes:</strong> Demonstrate measurable improvement in student engagement, academic performance, and program completion rates through quarterly data collection and annual third-party evaluation aligned with funder reporting requirements.</p>`;
   const outcomes = `<p>By the end of the grant period, ${d} anticipates the following measurable outcomes, which will be documented through a formal evaluation framework developed in partnership with a qualified external evaluator:</p><p><strong>Student Outcomes:</strong> 80% of participating students will demonstrate measurable growth in targeted ${goal.toLowerCase()} competencies as assessed by pre/post performance benchmarks. Attendance rates among program participants will improve by a minimum of 5 percentage points compared to the prior year baseline.</p><p><strong>Staff Outcomes:</strong> 90% of trained staff will report increased confidence and competency in delivering ${goal.toLowerCase()} instruction as measured by pre/post professional development surveys and classroom observation rubrics.</p><p><strong>Sustainability Outcomes:</strong> ${d} commits to sustaining core program components after the grant period using a combination of reallocated Title IV-A funds, local budget investments, and additional grant funding secured during years two and three of implementation. All outcomes will be reported to the funder on a quarterly basis.</p>`;
   return { exec, need, goals, outcomes };
 }
@@ -2333,7 +2326,7 @@ function renderResults(goal,district,state,students,needs,amount){
 // words ("career technical education CTE Perkins"), which over-constrained the
 // query before any of our filters even ran. Each entry now starts with the
 // canonical federal program phrasing and falls back to broader single concepts.
-// Only the KEYWORD widens here — eligibility 05 and agency exclusions never do.
+// Only the KEYWORD widens here: eligibility 05 and agency exclusions never do.
 const GRANTSGOV_KEYWORD_MAP={
   'STEM':                          ['STEM education', 'STEM', 'science education'],
   'School Safety':                 ['school safety', 'school violence prevention', 'student safety'],
@@ -2359,7 +2352,7 @@ const GRANTSGOV_KEYWORD_MAP={
 //   21 Individuals                  25 "Others"      99 Unrestricted
 //
 // We use 05 alone. A TK-12 district is an LEA, and any federal opportunity a
-// district may apply for lists 05 among its eligibilities — the filter is an
+// district may apply for lists 05 among its eligibilities: the filter is an
 // OR match, so 05 captures all of them without padding the list.
 //
 // Deliberately EXCLUDED: 06/20 (higher ed) pulled in university research such
@@ -2400,7 +2393,7 @@ const LIVE_SEARCH_ROWS = 60;
 
 function buildGrantsGovDeepLink(keyword){
   // Verified working: /search-grants?keyword=X&oppStatuses=posted
-  // (fetched directly against grants.gov — confirmed 200 response)
+  // (fetched directly against grants.gov: confirmed 200 response)
   const encoded = encodeURIComponent(keyword);
   return `https://www.grants.gov/search-grants?keyword=${encoded}&oppStatuses=posted`;
 }
@@ -2408,7 +2401,7 @@ function buildGrantsGovDeepLink(keyword){
 // ── Client-side relevance safety net ──────────────────────────────────────
 // Approach chosen: EXCLUDE State Dept / overseas programs, rather than
 // allow-listing agencies (ED|NSF|USDA|DOJ|HHS). An allow-list would silently
-// drop legitimate district funders — EPA (green schools), IMLS (libraries),
+// drop legitimate district funders: EPA (green schools), IMLS (libraries),
 // NEA (arts), FCC (E-Rate), DOT (safe routes). Exclusion is surgical; an
 // allow-list quietly hides real opportunities.
 //
@@ -2439,11 +2432,11 @@ function isNonDistrictOpportunity(h){
 // 05 alone lets them through. They fund biomedical/clinical research, not TK-12
 // district operations. Detected structurally, not by topic keywords:
 //
-//   1. Agency code — NIH institutes appear as HHS-NIH11, NIDA, NCI, etc.
-//   2. Opportunity-number prefix — NIH FOAs are PA-, PAR-, RFA-, NOSI-, NOT-.
-//      (ED uses ED-GRANTS-…, NSF uses PD-/NSF-, CDC uses CDC-RFA-… — no clash.)
+//   1. Agency code: NIH institutes appear as HHS-NIH11, NIDA, NCI, etc.
+//   2. Opportunity-number prefix: NIH FOAs are PA-, PAR-, RFA-, NOSI-, NOT-.
+//      (ED uses ED-GRANTS-…, NSF uses PD-/NSF-, CDC uses CDC-RFA-…: no clash.)
 //   3. NIH activity code in the title, e.g. "(R34 Clinical Trial Required)",
-//      "(P20 Clinical Trial Not Allowed)", "(U34 …)" — this alone catches all
+//      "(P20 Clinical Trial Not Allowed)", "(U34 …)": this alone catches all
 //      three examples reported.
 //   4. NIH clinical-trial boilerplate in the title.
 //   5. SBIR/STTR small-business research programs.
@@ -2451,7 +2444,7 @@ const NIH_INSTITUTE_CODES =
   /\b(NIH|NIAAA|NIDA|NIMH|NCI|NHLBI|NIAID|NINR|NIGMS|NICHD|NIEHS|NINDS|NIDCR|NIDDK|NIMHD|NCATS|NCCIH|NHGRI|NIBIB|NIDCD|NIAMS|NEI|NIA|FIC|NLM|AHRQ)\b/i;
 
 // NSF splits research vs. education by ALN (CFDA). 47.076 is the Directorate
-// for STEM Education — DRK-12, ITEST, Noyce, the programs districts actually
+// for STEM Education: DRK-12, ITEST, Noyce, the programs districts actually
 // use. Every other 47.xxx is a research directorate (engineering, geosciences,
 // biology, CISE…). So NSF hits are kept only when 47.076 is present.
 const NSF_STEM_EDUCATION_ALN = '47.076';
@@ -2470,13 +2463,13 @@ function isResearchOnlyOpportunity(h){
   // 2. NIH funding-opportunity-number prefixes
   if (/^(PAR|PA|RFA|NOSI|NOT)-/i.test(number)) return true;
 
-  // 3. NIH activity code in title — "(R34 …)", "(P20 …)", "(U34 …)"
+  // 3. NIH activity code in title: "(R34 …)", "(P20 …)", "(U34 …)"
   if (/\((?:R|P|U|K|T|F|DP)\d{2}\b[^)]*\)/i.test(title)) return true;
 
   // 4. NIH clinical-trial boilerplate
   if (/clinical trial (required|optional|not allowed)/i.test(title)) return true;
 
-  // 5. Small-business research programs — districts cannot apply
+  // 5. Small-business research programs: districts cannot apply
   if (/\b(SBIR|STTR)\b/i.test(title + ' ' + number)) return true;
 
   // 6. NSF: keep only STEM Education directorate (ALN 47.076)
@@ -2544,8 +2537,14 @@ const K12_SIGNAL =
   /(k-12|k12|prek|pre-k|preschool|elementary|secondary school|middle school|high school|school district|\blea\b|local educational agenc|classroom|pupil|student achievement)/i;
 
 function decodeEntities(s){
+  // Grant titles arrive HTML encoded. Dash entities are converted to plain
+  // words rather than dash characters, to keep copy free of them.
+  var NDASH = String.fromCharCode(8211), MDASH = String.fromCharCode(8212);
   return String(s || '')
-    .replace(/&ndash;/g,'–').replace(/&mdash;/g,'—')
+    .replace(/\s*&ndash;\s*/g, ' to ')
+    .replace(/\s*&mdash;\s*/g, ', ')
+    .replace(new RegExp('\\s*' + NDASH + '\\s*', 'g'), ' to ')
+    .replace(new RegExp('\\s*' + MDASH + '\\s*', 'g'), ', ')
     .replace(/&amp;/g,'&').replace(/&quot;/g,'"')
     .replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>');
@@ -2602,7 +2601,7 @@ function liveWhyMatch(h, goal){
   const who = bits.length ? bits.join(' ') : 'your';
   let txt = 'This is a currently-posted federal opportunity that matched ' + who +
             ' <strong>' + goal + '</strong> search. It passed screening for ' +
-            'school-district relevance — overseas programs, biomedical research ' +
+            'school-district relevance: overseas programs, biomedical research ' +
             'and off-topic listings were removed.';
   if (p && p.challenges) {
     const snip = p.challenges.length > 90 ? p.challenges.slice(0,90) + '…' : p.challenges;
@@ -2615,8 +2614,8 @@ function liveAngle(h, goal){
   const p = districtProfile;
   if (p && p.challenges) {
     const snip = p.challenges.length > 95 ? p.challenges.slice(0,95) + '…' : p.challenges;
-    return 'Open your narrative with your district\'s stated need — "' + snip +
-           '" — then tie it to this program\'s stated purpose on the official listing.';
+    return 'Open your narrative with your district\'s stated need: "' + snip +
+           '": then tie it to this program\'s stated purpose on the official listing.';
   }
   return 'Read the official listing first, then lead your narrative with specific ' +
          'student outcome data, a clear timeline, and measurable goals tied to this ' +
@@ -2703,7 +2702,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       lastDeepLink = buildGrantsGovDeepLink(keywords[0]);
 
       console.log('[TMW] ── Attempt ' + (attempt+1) + '/' + SHAPES.length +
-                  ' — shape: ' + shape.label + ' ──');
+                  ': shape: ' + shape.label + ' ──');
       console.log('[TMW] Keywords (parallel): ' + JSON.stringify(keywords));
 
       const t0 = Date.now();
@@ -2746,7 +2745,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
 
       const validHits = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
 
-      // Layer 1 — overseas / State Dept
+      // Layer 1: overseas / State Dept
       const L1_drop = validHits.filter(h => isNonDistrictOpportunity(h));
       const afterL1 = validHits.filter(h => !isNonDistrictOpportunity(h));
       console.log('[TMW] Layer 1 (overseas / State Dept): ' + validHits.length + ' -> ' +
@@ -2754,7 +2753,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       L1_drop.forEach(h => console.log('[TMW]   x dropped [overseas]:', h.number || h.id,
         '|', h.agencyCode || '', '|', (h.title || '').slice(0, 60)));
 
-      // Layer 2 — biomedical / research-only
+      // Layer 2: biomedical / research-only
       const L2_drop      = afterL1.filter(h => isResearchOnlyOpportunity(h));
       const afterL2      = afterL1.filter(h => !isResearchOnlyOpportunity(h));
       console.log('[TMW] Layer 2 (research-only agencies): ' + afterL1.length + ' -> ' +
@@ -2780,7 +2779,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       if (!districtHits.length) {
         if (attempt < SHAPES.length - 1) {
           console.log('[TMW] 0 district-relevant results with shape "' + shape.id +
-                      '" — loosening query shape and retrying…');
+                      '": loosening query shape and retrying…');
           continue;
         }
         break; // ladder exhausted -> honest empty state below
@@ -2789,17 +2788,17 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       if (isStale()) return;
 
       // ── Success ──────────────────────────────────────────────────────────
-      console.log('[TMW] ✓ LIVE FETCH SUCCEEDED —', districtHits.length,
+      console.log('[TMW] ✓ LIVE FETCH SUCCEEDED ', districtHits.length,
                   'district-relevant results (shape: ' + shape.id + ')');
       const deepLink = lastDeepLink;
       document.getElementById('live-badge').textContent = '🟢 LIVE';
       document.getElementById('live-header-label').textContent =
-        'Federal Grants — Live from Grants.gov';
+        'Federal Grants: Live from Grants.gov';
       // Eligibility is no longer pre-filtered by the API (code 05 was retired
       // - see note above). Every live result therefore needs district
       // verification, so the notice is always shown rather than conditionally.
       document.getElementById('live-status').textContent =
-        `${districtHits.length} federal opportunit${districtHits.length === 1 ? 'y' : 'ies'} — verify eligibility`;
+        `${districtHits.length} federal opportunit${districtHits.length === 1 ? 'y' : 'ies'}: verify eligibility`;
       const noticeHtml = `
         <div class="eligibility-notice">
           Eligibility is not pre-filtered. These are current federal education
@@ -2838,7 +2837,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
       if (_hl) _hl.textContent = 'Found ' + districtHits.length +
         ' live federal opportunit' + (districtHits.length===1?'y':'ies') + ' for ' + goal + '.';
       if (_bd) _bd.innerHTML = 'These are currently posted on Grants.gov and open for ' +
-        'application. Eligibility is not pre-filtered — confirm your district qualifies ' +
+        'application. Eligibility is not pre-filtered: confirm your district qualifies ' +
         'on the official listing before applying.';
       if (_ch) _ch.innerHTML =
         '<span class="summary-chip">🟢 ' + districtHits.length + ' live opportunities</span>' +
@@ -2910,12 +2909,12 @@ async function fetchGrantsGovLive(goal, needs, listEl){
                   <div class="verify-item"><div class="verify-item-label">Status</div><div class="verify-item-value">${h.oppStatus || 'posted'}</div></div>
                 </div>
                 <div class="verify-row">
-                  <div class="verify-item"><div class="verify-item-label">Posted</div><div class="verify-item-value">${h.openDate || '—'}</div></div>
+                  <div class="verify-item"><div class="verify-item-label">Posted</div><div class="verify-item-value">${h.openDate || ''}</div></div>
                   <div class="verify-item"><div class="verify-item-label">Opportunity ID</div><div class="verify-item-value">${h.id}</div></div>
                 </div>
                 <div class="verify-subsection">
                   <div class="verify-subsection-label">Award Amount &amp; Eligibility</div>
-                  <div class="verify-subsection-text">Not included in the Grants.gov search feed. Both are stated on the official listing &mdash; open it before committing staff time.</div>
+                  <div class="verify-subsection-text">Not included in the Grants.gov search feed. Both are stated on the official listing  open it before committing staff time.</div>
                 </div>
               </div>
             </div>
@@ -2940,7 +2939,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
 
     // ── Ladder exhausted: honest empty state, never padded ─────────────────
     if (isStale()) return;
-    console.warn('[TMW] All query shapes exhausted — 0 district-relevant results.');
+    console.warn('[TMW] All query shapes exhausted: 0 district-relevant results.');
     const deepLink = lastDeepLink;
     document.getElementById('live-badge').textContent = '🔍 NO MATCHES';
     document.getElementById('live-header-label').textContent =
@@ -2952,7 +2951,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         <div class="live-nomatch-text">
           Grants.gov returned ${lastRawCount} education-category result${lastRawCount === 1 ? '' : 's'}
           for <strong>${goal}</strong> across ${keywords.length} keyword variant${keywords.length === 1 ? '' : 's'},
-          but none were open to TK-12 school districts${(lastL1 + lastL2) ? ' — ' + lastL1 + ' were overseas/State Dept programs and ' + lastL2 + ' were biomedical research' : ''}.
+          but none were open to TK-12 school districts${(lastL1 + lastL2) ? ': ' + lastL1 + ' were overseas/State Dept programs and ' + lastL2 + ' were biomedical research' : ''}.
           No sample data is being shown in their place.
         </div>
         <a class="btn-live-apply" href="${deepLink}" target="_blank"
@@ -2963,7 +2962,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
     liveSearchController = null;
 
   } catch(err) {
-    // A superseded search is not a failure — stay silent
+    // A superseded search is not a failure: stay silent
     if (err && err.name === 'AbortError') {
       console.log('[TMW] Previous live search aborted (superseded by a newer search)');
       return;
@@ -2985,7 +2984,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
     console.warn('[TMW] Failure reason code:', reason);
     console.warn('[TMW] Error message:', msg);
     if (reason === 'CORS_BLOCK') {
-      console.warn('[TMW] On the deployed Vercel site this should NOT happen — the request');
+      console.warn('[TMW] On the deployed Vercel site this should NOT happen: the request');
       console.warn('[TMW] goes to the same-origin /api/grants proxy. Check the Vercel');
       console.warn('[TMW] dashboard -> your project -> Functions tab that api/grants deployed.');
     }
@@ -2997,14 +2996,14 @@ async function fetchGrantsGovLive(goal, needs, listEl){
     const deepLink = lastDeepLink;
     document.getElementById('live-badge').textContent = '⚠️ SAMPLE';
     document.getElementById('live-header-label').textContent =
-      'Live search unavailable — showing sample grants for demonstration';
+      'Live search unavailable: showing sample grants for demonstration';
     document.getElementById('live-status').textContent = '';
     document.getElementById('live-results-inner').innerHTML = `
       <div class="live-fallback-banner">
         <div class="live-fallback-title">⚠️ Live federal data could not be loaded</div>
         <div class="live-fallback-reason">
           ${reason === 'CORS_BLOCK'
-            ? 'The live grant search service could not be reached. If you are viewing this as a local file, this is expected — the deployed site on Vercel includes the server function that makes live search work.'
+            ? 'The live grant search service could not be reached. If you are viewing this as a local file, this is expected: the deployed site on Vercel includes the server function that makes live search work.'
             : reason === 'HTTP_ERROR'
             ? 'The Grants.gov API returned an error: ' + msg
             : reason === 'CODE_ERROR'
@@ -3215,11 +3214,11 @@ function buildFullDraft(g, district, state, students, goal, needs){
   const sStr=n>0?n.toLocaleString()+' students':'thousands of students';
   const nSnip=needs?needs.slice(0,140)+(needs.length>140?'…':''):'documented program and facility needs';
   return {
-    exec:`${d}, a public K–12 school district serving ${sStr} across ${state}, respectfully submits this application to ${g.funder} for the ${g.name} program. This request represents a strategic investment in the district's long-term commitment to improving ${goal.toLowerCase()} outcomes for all learners.
+    exec:`${d}, a public K12 school district serving ${sStr} across ${state}, respectfully submits this application to ${g.funder} for the ${g.name} program. This request represents a strategic investment in the district's long-term commitment to improving ${goal.toLowerCase()} outcomes for all learners.
 
 The district seeks funding in the range of ${g.amount} to implement a comprehensive, evidence-based initiative that directly addresses gaps identified in our most recent district needs assessment. With strong board support, experienced program leadership, and a clear implementation timeline, ${d} is well-positioned to deploy these resources effectively and achieve meaningful, measurable results within the grant period.
 
-This initiative will serve students across all grade levels with a concentrated focus on high-need populations including English Learners, students qualifying for free or reduced-price lunch, and students with disabilities — groups that make up the majority of our enrollment and stand to benefit most from targeted investment.`,
+This initiative will serve students across all grade levels with a concentrated focus on high-need populations including English Learners, students qualifying for free or reduced-price lunch, and students with disabilities: groups that make up the majority of our enrollment and stand to benefit most from targeted investment.`,
 
     need:`${d} serves a community where persistent resource constraints have limited the district's ability to develop ${goal.toLowerCase()} programs at the quality and scale that students deserve. Approximately 58% of enrolled students qualify for free or reduced-price lunch; 24% are classified as English Learners; and 12% receive special education services under IDEA.
 
@@ -3227,21 +3226,21 @@ A comprehensive needs assessment conducted in the prior school year identified t
 
 Without dedicated external funding, the district lacks the capacity to close these gaps through operating budget resources alone. State per-pupil allocations have declined in real terms over the past four years, and existing categorical funding is fully committed to sustaining current programs. This grant represents a critical bridge to a more equitable and effective educational experience for every student in ${d}.`,
 
-    proj:`The ${g.name} initiative at ${d} will be implemented across a 24-month project period organized into three phases: Planning & Procurement (Months 1–4), Launch & Implementation (Months 5–18), and Evaluation & Sustainability (Months 19–24).
+    proj:`The ${g.name} initiative at ${d} will be implemented across a 24-month project period organized into three phases: Planning & Procurement (Months 1 to 4), Launch & Implementation (Months 5 to 18), and Evaluation & Sustainability (Months 19 to 24).
 
 During the Planning phase, the district will establish a cross-functional implementation team including the Assistant Superintendent of Curriculum, two site-based program coordinators, a data analyst, and community liaisons fluent in the primary languages spoken by district families. The team will finalize vendor contracts, complete staff hiring, and deliver initial professional development to all participating educators.
 
-The Launch phase will deploy program components directly to students across participating school sites. All activities are grounded in evidence-based practices with demonstrated efficacy in similar K–12 contexts. Fidelity monitoring will occur monthly using structured observation tools and student participation data.
+The Launch phase will deploy program components directly to students across participating school sites. All activities are grounded in evidence-based practices with demonstrated efficacy in similar K12 contexts. Fidelity monitoring will occur monthly using structured observation tools and student participation data.
 
 The Evaluation phase will compile outcomes data, produce a formal program evaluation report, and present findings to the board of trustees. Lessons learned will inform a sustainability plan that embeds the most effective program elements into the district's core instructional model using Title IV-A and other formula-based funding sources.`,
 
     goals:`The ${g.name} initiative is organized around three interconnected goals designed to address the root causes of inequity in ${goal.toLowerCase()} access and outcomes at ${d}:
 
-Goal 1 — Expand Student Access: Increase the percentage of students participating in high-quality ${goal.toLowerCase()} programs by a minimum of 35% in Year 1, with priority enrollment for students from historically underrepresented groups. Remove logistical and financial barriers to participation including transportation, materials costs, and scheduling conflicts.
+Goal 1: Expand Student Access: Increase the percentage of students participating in high-quality ${goal.toLowerCase()} programs by a minimum of 35% in Year 1, with priority enrollment for students from historically underrepresented groups. Remove logistical and financial barriers to participation including transportation, materials costs, and scheduling conflicts.
 
-Goal 2 — Build Educator Capacity: Train and coach a minimum of 30 district staff members in evidence-based instructional strategies for ${goal.toLowerCase()} delivery. Establish a sustainable internal coaching model that does not depend on ongoing external vendors after the grant period ends.
+Goal 2: Build Educator Capacity: Train and coach a minimum of 30 district staff members in evidence-based instructional strategies for ${goal.toLowerCase()} delivery. Establish a sustainable internal coaching model that does not depend on ongoing external vendors after the grant period ends.
 
-Goal 3 — Strengthen Accountability Systems: Implement a real-time data dashboard that tracks student participation, engagement, and outcomes by demographic subgroup. Use findings to make mid-course corrections and ensure equitable distribution of program benefits across all school sites and student populations.`,
+Goal 3: Strengthen Accountability Systems: Implement a real-time data dashboard that tracks student participation, engagement, and outcomes by demographic subgroup. Use findings to make mid-course corrections and ensure equitable distribution of program benefits across all school sites and student populations.`,
 
     out:`By the conclusion of the grant period, ${d} expects to demonstrate the following measurable outcomes, which will be tracked through a formal evaluation framework developed with a qualified third-party evaluator:
 
@@ -3282,13 +3281,13 @@ function _doGenerateDraft(grantName){
     scoreEl.textContent=sc+'% Match';
     scoreEl.className='draft-meta-value '+(sc>=90?'green':sc>=80?'':'amber');
   }
-  document.getElementById('dp-difficulty').textContent=g.difficulty||'—';
+  document.getElementById('dp-difficulty').textContent=g.difficulty||'';
 
   // populate district sidebar
-  document.getElementById('dp-district').textContent=cDistrict||'—';
-  document.getElementById('dp-state').textContent=cState||'—';
-  document.getElementById('dp-students').textContent=cStudents?parseInt(cStudents).toLocaleString()+' students':'—';
-  document.getElementById('dp-goal').textContent=cGoal||'—';
+  document.getElementById('dp-district').textContent=cDistrict||'';
+  document.getElementById('dp-state').textContent=cState||'';
+  document.getElementById('dp-students').textContent=cStudents?parseInt(cStudents).toLocaleString()+' students':'';
+  document.getElementById('dp-goal').textContent=cGoal||'';
 
   // build editable section cards
   const col=document.getElementById('dp-sections-col');
@@ -3322,7 +3321,7 @@ function _doGenerateDraft(grantName){
         <textarea class="doc-textarea" id="ta-${sec.id}" oninput="onTaInput('${sec.id}')" placeholder="Start typing or click Regenerate…">${txt}</textarea>
       </div>
       <div class="improved-banner" id="ib-${sec.id}">
-        ✦ Section improved by AI Coach — review and edit as needed
+        ✦ Section improved by AI Coach. Review and edit as needed
       </div>
       <div class="doc-section-footer">
         <div class="doc-section-footer-left">
@@ -3361,7 +3360,7 @@ const FEEDBACK_DATA = {
     ],
     improve:[
       'Add a specific dollar amount requested rather than referencing the award range.',
-      'Name the specific program or initiative — avoid generic language like "this initiative."',
+      'Name the specific program or initiative: avoid generic language like "this initiative."',
       'Include a compelling opening statistic about your district\'s student population.',
     ],
     missing:[
@@ -3369,12 +3368,12 @@ const FEEDBACK_DATA = {
       'Program/initiative name',
       'District\'s track record',
     ],
-    suggestion:`Consider opening with: "With 62% of students qualifying for free or reduced-price lunch, [District] has identified [specific program] as the highest-leverage investment to close the [goal] achievement gap — and we are seeking $[X] from [Funder] to make it a reality."`,
-    improved:`[District Name], a high-need K–12 school district serving [X] students across [State], respectfully requests $[specific amount] from [Funder] to implement the [Program Name] — a targeted, evidence-based initiative designed to close the [goal] achievement gap affecting our most underserved learners.
+    suggestion:`Consider opening with: "With 62% of students qualifying for free or reduced-price lunch, [District] has identified [specific program] as the highest-leverage investment to close the [goal] achievement gap: and we are seeking $[X] from [Funder] to make it a reality."`,
+    improved:`[District Name], a high-need K12 school district serving [X] students across [State], respectfully requests $[specific amount] from [Funder] to implement the [Program Name]: a targeted, evidence-based initiative designed to close the [goal] achievement gap affecting our most underserved learners.
 
 Sixty-two percent of our students qualify for free or reduced-price lunch, and recent district data shows a 31-point gap in [goal] proficiency rates between our highest- and lowest-income student populations. Despite strong community commitment to educational equity, our operating budget cannot close this gap without external investment.
 
-The [Program Name] will serve [X] students in grades [X–X] during its first year, with a phased expansion to all campuses by Year 2. Our district has a demonstrated track record of successfully managing federal grants — including $[X] in prior awards — and our implementation team is in place and ready to begin within 30 days of award notification. We are confident this partnership with [Funder] will produce lasting, measurable results that reflect the shared values of both organizations.`
+The [Program Name] will serve [X] students in grades [XX] during its first year, with a phased expansion to all campuses by Year 2. Our district has a demonstrated track record of successfully managing federal grants: including $[X] in prior awards: and our implementation team is in place and ready to begin within 30 days of award notification. We are confident this partnership with [Funder] will produce lasting, measurable results that reflect the shared values of both organizations.`
   },
   need:{
     score:68,
@@ -3395,7 +3394,7 @@ The [Program Name] will serve [X] students in grades [X–X] during its first ye
       'Geographic/demographic context',
     ],
     suggestion:`Strengthen urgency: "Over the past three years, [goal] proficiency rates among our English Learner population have declined from 41% to 34%, widening the gap with state averages by 12 points. Without intervention, district projections show continued decline through 2027."`,
-    improved:`The need for this investment in [District Name] is both urgent and well-documented. Our district serves [X] students in [City/Region], [State] — a community where the median household income is 23% below the state average and where [X]% of families live below the federal poverty line.
+    improved:`The need for this investment in [District Name] is both urgent and well-documented. Our district serves [X] students in [City/Region], [State]: a community where the median household income is 23% below the state average and where [X]% of families live below the federal poverty line.
 
 State accountability data from the prior school year shows that our students score 18 points below the state average in [goal]-related benchmarks. More troubling, that gap has widened by 6 points over the past three years, reflecting systemic underinvestment rather than any lack of student potential or teacher effort.
 
@@ -3421,14 +3420,14 @@ Our district has exhausted all available local resources to address these gaps. 
       'Budget breakdown by phase',
       'Family engagement plan',
     ],
-    suggestion:`Be specific: instead of "evidence-based practices," name the exact program — e.g., "Project Lead the Way (PLTW) curriculum, a nationally validated STEM model with documented efficacy in high-need districts (What Works Clearinghouse rating: Strong)."`,
+    suggestion:`Be specific: instead of "evidence-based practices," name the exact program: e.g., "Project Lead the Way (PLTW) curriculum, a nationally validated STEM model with documented efficacy in high-need districts (What Works Clearinghouse rating: Strong)."`,
     improved:`The [Program Name] will be implemented at [District Name] over 24 months in three clearly defined phases, each with dedicated milestones, responsible staff, and budget allocations.
 
-Phase 1 — Planning & Procurement (Months 1–4, $[X] or [X]% of budget): The district will hire a full-time Program Coordinator (LCSW or equivalent), execute contracts with [specific vendor/program, e.g., "Project Lead the Way"], and complete professional development for all [X] participating teachers using the [specific PD model] framework. A family engagement specialist will conduct community listening sessions in English, Spanish, and [other languages] to co-design program elements with families.
+Phase 1: Planning & Procurement (Months 1 to 4, $[X] or [X]% of budget): The district will hire a full-time Program Coordinator (LCSW or equivalent), execute contracts with [specific vendor/program, e.g., "Project Lead the Way"], and complete professional development for all [X] participating teachers using the [specific PD model] framework. A family engagement specialist will conduct community listening sessions in English, Spanish, and [other languages] to co-design program elements with families.
 
-Phase 2 — Direct Implementation (Months 5–18, $[X] or [X]% of budget): Students in grades [X–X] will receive [X] hours per week of [specific program] instruction delivered by trained staff. Fidelity monitoring will use the [specific observation tool] completed monthly by the Program Coordinator. Student progress will be tracked using [specific assessment tool] administered at 8-week intervals.
+Phase 2: Direct Implementation (Months 5 to 18, $[X] or [X]% of budget): Students in grades [XX] will receive [X] hours per week of [specific program] instruction delivered by trained staff. Fidelity monitoring will use the [specific observation tool] completed monthly by the Program Coordinator. Student progress will be tracked using [specific assessment tool] administered at 8-week intervals.
 
-Phase 3 — Evaluation & Transition (Months 19–24, $[X] or [X]% of budget): [External evaluator firm or university partner] will complete an independent program evaluation using a quasi-experimental comparison design. Findings will be presented to the board of trustees and published on the district website. A written sustainability plan will ensure continuation of core activities using Title IV-A funds and reallocated site budgets.`
+Phase 3: Evaluation & Transition (Months 19 to 24, $[X] or [X]% of budget): [External evaluator firm or university partner] will complete an independent program evaluation using a quasi-experimental comparison design. Findings will be presented to the board of trustees and published on the district website. A written sustainability plan will ensure continuation of core activities using Title IV-A funds and reallocated site budgets.`
   },
   goals:{
     score:71,
@@ -3451,13 +3450,13 @@ Phase 3 — Evaluation & Transition (Months 19–24, $[X] or [X]% of budget): [E
     suggestion:`Replace vague goals with SMART versions: "By June 2026, increase the percentage of English Learner students meeting grade-level [goal] benchmarks from 34% (current baseline) to 52%, a gain of 18 percentage points, as measured by [specific assessment]."`,
     improved:`The [Program Name] is guided by four SMART goals directly aligned with [Funder]'s published priorities of [priority 1], [priority 2], and [priority 3]:
 
-Goal 1 — Student Access & Participation: By the end of Year 1, increase enrollment in [goal]-related programs from [X]% to [X]% of eligible students, with 90% of new participants drawn from Title I-eligible, English Learner, or students with disabilities populations. Measured by: enrollment records and demographic participation reports.
+Goal 1: Student Access & Participation: By the end of Year 1, increase enrollment in [goal]-related programs from [X]% to [X]% of eligible students, with 90% of new participants drawn from Title I-eligible, English Learner, or students with disabilities populations. Measured by: enrollment records and demographic participation reports.
 
-Goal 2 — Student Achievement: By June 2026, increase the percentage of participating students meeting grade-level [goal] proficiency benchmarks from [baseline X]% to [target X]%, with equivalent or greater gains for every student subgroup. Measured by: [specific pre/post assessment tool] administered at the start and end of each semester.
+Goal 2: Student Achievement: By June 2026, increase the percentage of participating students meeting grade-level [goal] proficiency benchmarks from [baseline X]% to [target X]%, with equivalent or greater gains for every student subgroup. Measured by: [specific pre/post assessment tool] administered at the start and end of each semester.
 
-Goal 3 — Educator Capacity: By the end of Year 1, 100% of participating teachers will complete [specific PD program] certification and demonstrate proficiency in [X] evidence-based instructional strategies as assessed by structured observation rubrics. Measured by: PD completion records and quarterly observation data.
+Goal 3: Educator Capacity: By the end of Year 1, 100% of participating teachers will complete [specific PD program] certification and demonstrate proficiency in [X] evidence-based instructional strategies as assessed by structured observation rubrics. Measured by: PD completion records and quarterly observation data.
 
-Goal 4 — Family & Community Engagement: By Year 2, achieve a 40% increase in family participation in [goal]-related school events and advisory processes, with Spanish-language and multilingual support at all events. Measured by: sign-in sheets, survey data, and advisory committee attendance records.`
+Goal 4: Family & Community Engagement: By Year 2, achieve a 40% increase in family participation in [goal]-related school events and advisory processes, with Spanish-language and multilingual support at all events. Measured by: sign-in sheets, survey data, and advisory committee attendance records.`
   },
   out:{
     score:74,
@@ -3477,7 +3476,7 @@ Goal 4 — Family & Community Engagement: By Year 2, achieve a 40% increase in f
       'Named evaluator / evaluation design',
       'Reporting timeline or table',
     ],
-    suggestion:`Outcomes must be anchored to baselines: "Currently, only 34% of our EL students meet grade-level [goal] benchmarks. By Year 2, this grant will move that number to 52% — a measurable, meaningful gain that we will document with a validated pre/post assessment and third-party review."`,
+    suggestion:`Outcomes must be anchored to baselines: "Currently, only 34% of our EL students meet grade-level [goal] benchmarks. By Year 2, this grant will move that number to 52%: a measurable, meaningful gain that we will document with a validated pre/post assessment and third-party review."`,
     improved:`[District Name] commits to the following measurable outcomes, each tied to a documented baseline and assessed through a rigorous third-party evaluation conducted by [University Partner or Evaluation Firm]:
 
 Year 1 Student Outcomes:
@@ -3769,7 +3768,7 @@ const FORMSPREE_FORM_ID = 'xnjekwza';
 // can confirm or report failure rather than claiming success blindly.
 function sendLeadToFormspree(lead){
   if (FORMSPREE_FORM_ID === 'YOUR_FORM_ID_HERE') {
-    console.warn('[TMW] Lead capture SKIPPED — FORMSPREE_FORM_ID is still the placeholder.');
+    console.warn('[TMW] Lead capture SKIPPED: FORMSPREE_FORM_ID is still the placeholder.');
     console.warn('[TMW] Set it near the top of the script block to enable real submissions.');
     return Promise.resolve({ ok:true, skipped:true });
   }
@@ -3802,13 +3801,13 @@ function sendLeadToFormspree(lead){
       if (body && body.errors && body.errors.length) {
         detail = body.errors.map(function(e){ return e.message; }).join('; ');
       }
-      console.error('[TMW] ✗ Lead submission FAILED — HTTP ' + r.status +
-                    (detail ? ' — ' + detail : ''));
+      console.error('[TMW] ✗ Lead submission FAILED: HTTP ' + r.status +
+                    (detail ? ': ' + detail : ''));
       return { ok:false, reason: detail || ('HTTP ' + r.status) };
     });
   })
   .catch(function(err){
-    console.error('[TMW] ✗ Lead submission FAILED — network error: ' + err.message);
+    console.error('[TMW] ✗ Lead submission FAILED: network error: ' + err.message);
     return { ok:false, reason:'could not reach Formspree' };
   });
 }
@@ -3867,7 +3866,7 @@ function closeModal(){
   document.body.style.overflow='';
 }
 
-// Close on backdrop click — wrapped so element is guaranteed to exist
+// Close on backdrop click: wrapped so element is guaranteed to exist
 document.addEventListener('DOMContentLoaded',function(){
   const modal=document.getElementById('account-modal');
   if(modal) modal.addEventListener('click',function(e){
@@ -3916,7 +3915,7 @@ function submitAccount(){
                             "). Please check your connection and try again.";
         errEl.style.display='block';
       }
-      console.warn('[TMW] Account creation halted — lead was not captured.');
+      console.warn('[TMW] Account creation halted: lead was not captured.');
       return;
     }
 
@@ -3940,7 +3939,7 @@ function submitAccount(){
     document.getElementById('modal-form-state').style.display='none';
     document.getElementById('modal-success-state').classList.add('show');
     document.getElementById('modal-success-msg').textContent =
-      `Thanks, ${name.split(' ')[0]} — we'll be in touch. Your grant searches and drafts are now saved automatically.`;
+      `Thanks, ${name.split(' ')[0]}: we'll be in touch. Your grant searches and drafts are now saved automatically.`;
     document.querySelector('#modal-success-state .btn-modal-success').textContent='Go to My Dashboard';
   });
 }
@@ -4000,7 +3999,7 @@ function continueAsGuest(){
   pendingAction=null; pendingArgs=null;
 }
 
-// clear err on input — guarded so no crash if modal not yet in DOM
+// clear err on input: guarded so no crash if modal not yet in DOM
 document.addEventListener('DOMContentLoaded',()=>{
   ['mf-name','mf-district','mf-title','mf-email'].forEach(id=>{
     const el=document.getElementById(id);
@@ -4018,7 +4017,7 @@ function buildDashboard(){
   const firstName=currentUser.name.split(' ')[0];
   const districtName=currentUser.district||'your district';
 
-  // Header — welcome message using district name
+  // Header: welcome message using district name
   document.getElementById('dash-welcome-name').textContent=`Welcome back, ${firstName}!`;
   document.getElementById('dash-welcome-sub').textContent=`${districtName} · ${currentUser.title}`;
 
@@ -4118,7 +4117,7 @@ function buildDashboard(){
     recGrants=[...GRANTS_DB[profileGoal]].sort((a,b)=>b.score-a.score).slice(0,3);
   } else {
     recGrants=[
-      {name:'Title IV-A Student Support',funder:'U.S. Dept. of Education',score:99,whyMatch:'Every public district is automatically eligible for this formula-based federal funding — a strong starting point for any funding goal.'},
+      {name:'Title IV-A Student Support',funder:'U.S. Dept. of Education',score:99,whyMatch:'Every public district is automatically eligible for this formula-based federal funding: a strong starting point for any funding goal.'},
       {name:'E-Rate Program',funder:'FCC / Universal Service Fund',score:95,whyMatch:'Nearly all districts qualify for connectivity discounts, regardless of funding focus.'},
       {name:'NSF STEM Education Innovation Grant',funder:'National Science Foundation',score:97,whyMatch:'A high-value federal grant worth exploring once your district profile is complete.'},
     ];
@@ -4141,7 +4140,7 @@ function buildDashboard(){
       </div>
     </div>`).join('');
 
-  // ── Upcoming Deadlines — dynamic, based on real grant data ─────
+  // ── Upcoming Deadlines: dynamic, based on real grant data ─────
   const deadlineEl=document.getElementById('dash-deadlines-list');
   if(deadlineEl){
     // Collect all grants from categories the user has searched
@@ -4239,7 +4238,7 @@ function buildProfilePage(){
       document.getElementById('prof-file-chip').classList.add('show');
     }
   } else {
-    // First visit — carry over whatever we already know
+    // First visit: carry over whatever we already know
     if(cDistrict) setVal('prof-district-name', cDistrict);
     else if(currentUser && currentUser.district) setVal('prof-district-name', currentUser.district);
     if(cState) setVal('prof-state', cState);
@@ -4446,11 +4445,11 @@ function submitDemoRequest(){
     interested_in: val('demo-interest'),
     best_time: val('demo-timing') || '(not provided)',
     message: val('demo-message') || '(none)',
-    _subject: 'DEMO REQUEST from '+val('demo-district')+' — '+val('demo-name')
+    _subject: 'DEMO REQUEST from '+val('demo-district')+': '+val('demo-name')
   };
 
   if (FORMSPREE_FORM_ID === 'YOUR_FORM_ID_HERE') {
-    console.warn('[TMW] Demo request NOT sent — FORMSPREE_FORM_ID is still the placeholder.');
+    console.warn('[TMW] Demo request NOT sent: FORMSPREE_FORM_ID is still the placeholder.');
     showDemoSuccess(val('demo-name'), true);
     return;
   }
@@ -4477,7 +4476,7 @@ function submitDemoRequest(){
       if(body && body.errors && body.errors.length){
         detail=body.errors.map(function(e){return e.message;}).join('; ');
       }
-      console.error('[TMW] ✗ Demo request FAILED — HTTP '+r.status+(detail?' — '+detail:''));
+      console.error('[TMW] ✗ Demo request FAILED: HTTP '+r.status+(detail?': '+detail:''));
       if(errEl){
         errEl.textContent="We couldn't send your request just now ("+(detail||('HTTP '+r.status))+
                           "). Please try again, or email us directly.";
@@ -4487,7 +4486,7 @@ function submitDemoRequest(){
   })
   .catch(function(err){
     btn.disabled=false; btn.textContent='Send Request';
-    console.error('[TMW] ✗ Demo request FAILED — network error: '+err.message);
+    console.error('[TMW] ✗ Demo request FAILED: network error: '+err.message);
     if(errEl){
       errEl.textContent="We couldn't reach our server. Please check your connection and try again.";
       errEl.style.display='block';
@@ -4501,13 +4500,90 @@ function showDemoSuccess(name, skipped){
   const card=document.getElementById('demo-form-card');
   if(txt){
     txt.textContent = skipped
-      ? 'Form not yet connected to email delivery — this submission was not sent.'
-      : 'Thanks, '+String(name).split(' ')[0]+' — we\'ll be in touch by email shortly to arrange a time.';
+      ? 'Form not yet connected to email delivery: this submission was not sent.'
+      : 'Thanks, '+String(name).split(' ')[0]+': we\'ll be in touch by email shortly to arrange a time.';
   }
   if(banner){ banner.classList.add('show'); }
   if(card){ card.style.display='none'; }
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+/* ── HOME PAGE LIVE STATS ─────────────────────────────────────── */
+// Every figure here is derived from a real Grants.gov query made when the
+// page loads. Nothing is estimated or hardcoded except the count of curated
+// programs, which is read from GRANTS_DB. If the query fails the whole strip
+// is hidden rather than showing a placeholder number.
+function loadHomeStats(){
+  const setNum = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  const srcEl  = document.getElementById('hs-source');
+  const strip  = document.querySelector('.stats-strip');
+
+  // Curated count is exact and needs no network call.
+  try {
+    const n = Object.values(GRANTS_DB).reduce((a,v)=>a+v.length,0);
+    setNum('hs-programs', n);
+  } catch(e){}
+
+  const body = {
+    keyword: 'education',
+    oppStatuses: 'posted',
+    fundingCategories: 'ED',
+    rows: 100,
+    startRecordNum: 0
+  };
+  console.log('[TMW] Home stats: querying Grants.gov for live figures');
+
+  fetch('/api/grants', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  })
+  .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+  .then(d => {
+    if (!d || d.errorcode !== 0) throw new Error((d && d.msg) || 'API error');
+    const hits  = (d.data && d.data.oppHits) || [];
+    const total = (d.data && d.data.hitCount) || hits.length;
+    if (!hits.length) throw new Error('no results returned');
+
+    // Distinct funding agencies, using the top level code (ED, USDA, HHS...)
+    const agencies = {};
+    hits.forEach(h => {
+      const a = String(h.agencyCode || '').split('-')[0];
+      if (a) agencies[a] = true;
+    });
+
+    // Closing within 30 days, parsed from the MM/DD/YYYY closeDate field
+    const now = new Date();
+    let closing = 0;
+    hits.forEach(h => {
+      if (!h.closeDate) return;
+      const p = String(h.closeDate).split('/');
+      if (p.length !== 3) return;
+      const days = Math.ceil((new Date(+p[2], +p[0]-1, +p[1]) - now) / 86400000);
+      if (days >= 0 && days <= 30) closing++;
+    });
+
+    setNum('hs-open', total.toLocaleString());
+    setNum('hs-agencies', Object.keys(agencies).length);
+    setNum('hs-closing', closing);
+
+    if (srcEl) {
+      const sampled = hits.length < total;
+      srcEl.textContent = 'Live from Grants.gov, checked ' +
+        new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) +
+        (sampled ? '. Agency and deadline counts reflect the ' + hits.length +
+                   ' most recent of ' + total.toLocaleString() + ' open opportunities.' : '.');
+    }
+    console.log('[TMW] Home stats loaded: ' + total + ' open, ' +
+                Object.keys(agencies).length + ' agencies, ' + closing + ' closing within 30 days');
+  })
+  .catch(err => {
+    // No invented numbers. If we cannot verify it, we do not show it.
+    console.warn('[TMW] Home stats unavailable, hiding the strip: ' + err.message);
+    if (strip) strip.style.display = 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', loadHomeStats);
 </script>
 
 <!-- ════════════════════════════════════════════════════
@@ -4554,10 +4630,10 @@ function showDemoSuccess(name, skipped){
       </div>
     </div>
     <div class="draft-grant-meta">
-      <div class="draft-meta-item"><span class="draft-meta-label">Funding Amount</span><span class="draft-meta-value green" id="dp-amount">—</span></div>
-      <div class="draft-meta-item"><span class="draft-meta-label">Deadline</span><span class="draft-meta-value" id="dp-deadline">—</span></div>
-      <div class="draft-meta-item"><span class="draft-meta-label">Match Score</span><span class="draft-meta-value" id="dp-score">—</span></div>
-      <div class="draft-meta-item"><span class="draft-meta-label">Difficulty</span><span class="draft-meta-value" id="dp-difficulty">—</span></div>
+      <div class="draft-meta-item"><span class="draft-meta-label">Funding Amount</span><span class="draft-meta-value green" id="dp-amount"></span></div>
+      <div class="draft-meta-item"><span class="draft-meta-label">Deadline</span><span class="draft-meta-value" id="dp-deadline"></span></div>
+      <div class="draft-meta-item"><span class="draft-meta-label">Match Score</span><span class="draft-meta-value" id="dp-score"></span></div>
+      <div class="draft-meta-item"><span class="draft-meta-label">Difficulty</span><span class="draft-meta-value" id="dp-difficulty"></span></div>
     </div>
   </div>
 </div>
@@ -4572,13 +4648,13 @@ function showDemoSuccess(name, skipped){
     <div class="draft-district-card">
       <div class="draft-district-title">📋 District Profile</div>
       <div class="district-info-row">
-        <div class="district-info-item"><span class="district-info-label">District Name</span><span class="district-info-value" id="dp-district">—</span></div>
+        <div class="district-info-item"><span class="district-info-label">District Name</span><span class="district-info-value" id="dp-district"></span></div>
         <div class="district-divider"></div>
-        <div class="district-info-item"><span class="district-info-label">State</span><span class="district-info-value" id="dp-state">—</span></div>
+        <div class="district-info-item"><span class="district-info-label">State</span><span class="district-info-value" id="dp-state"></span></div>
         <div class="district-divider"></div>
-        <div class="district-info-item"><span class="district-info-label">Student Population</span><span class="district-info-value" id="dp-students">—</span></div>
+        <div class="district-info-item"><span class="district-info-label">Student Population</span><span class="district-info-value" id="dp-students"></span></div>
         <div class="district-divider"></div>
-        <div class="district-info-item"><span class="district-info-label">Funding Goal</span><span class="district-info-value" id="dp-goal">—</span></div>
+        <div class="district-info-item"><span class="district-info-label">Funding Goal</span><span class="district-info-value" id="dp-goal"></span></div>
       </div>
     </div>
 
@@ -4794,9 +4870,9 @@ function showDemoSuccess(name, skipped){
       <!-- Profile card -->
       <div class="profile-card">
         <div class="profile-avatar" id="dash-avatar">?</div>
-        <div class="profile-name" id="dash-profile-name">—</div>
-        <div class="profile-role" id="dash-profile-role">—</div>
-        <div class="profile-district-badge">🏫 <span id="dash-profile-district">—</span></div>
+        <div class="profile-name" id="dash-profile-name"></div>
+        <div class="profile-role" id="dash-profile-role"></div>
+        <div class="profile-district-badge">🏫 <span id="dash-profile-district"></span></div>
         <div style="margin-top:.6rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goProfile()">Edit full district profile →</a></div>
         <button class="profile-card-signout" onclick="signOut()">↩ Sign out of this browser</button>
         <div class="profile-stats">
@@ -4965,9 +5041,9 @@ function showDemoSuccess(name, skipped){
       <label>Grade Levels Served</label>
       <div class="grade-level-row" id="grade-level-row">
         <button type="button" class="grade-chip" data-grade="Pre-K/TK" onclick="toggleGradeChip(this)">Pre-K / TK</button>
-        <button type="button" class="grade-chip" data-grade="Elementary (K–5)" onclick="toggleGradeChip(this)">Elementary (K–5)</button>
-        <button type="button" class="grade-chip" data-grade="Middle (6–8)" onclick="toggleGradeChip(this)">Middle (6–8)</button>
-        <button type="button" class="grade-chip" data-grade="High School (9–12)" onclick="toggleGradeChip(this)">High School (9–12)</button>
+        <button type="button" class="grade-chip" data-grade="Elementary (K to 5)" onclick="toggleGradeChip(this)">Elementary (K to 5)</button>
+        <button type="button" class="grade-chip" data-grade="Middle (6 to 8)" onclick="toggleGradeChip(this)">Middle (6 to 8)</button>
+        <button type="button" class="grade-chip" data-grade="High School (9 to 12)" onclick="toggleGradeChip(this)">High School (9 to 12)</button>
       </div>
       <span class="field-hint">Select all grade bands your district serves.</span>
     </div>
@@ -4976,7 +5052,7 @@ function showDemoSuccess(name, skipped){
   <!-- SECTION 2: Funding Priorities -->
   <div class="form-card" id="sec-priorities">
     <div class="form-card-title">2. Funding Priorities</div>
-    <div class="form-card-sub">Select every area your district is actively seeking funding for — this directly shapes your grant matches.</div>
+    <div class="form-card-sub">Select every area your district is actively seeking funding for. This directly shapes your grant matches.</div>
 
     <div class="priority-grid" id="priority-grid">
       <label class="priority-checkbox-card" data-value="STEM"><input type="checkbox" onchange="syncPriorityCard(this);updateCompleteness()"><span class="pc-icon">🔬</span><span>STEM</span></label>
@@ -4995,7 +5071,7 @@ function showDemoSuccess(name, skipped){
   <!-- SECTION 3: Student Population Overview -->
   <div class="form-card" id="sec-population">
     <div class="form-card-title">3. Student Population Overview</div>
-    <div class="form-card-sub">Aggregate figures only — helps match your district to equity-focused and need-based funding opportunities.</div>
+    <div class="form-card-sub">Aggregate figures only. This helps match your district to equity focused and need based funding opportunities.</div>
 
     <div class="form-grid form-grid-3">
       <div class="field">
@@ -5015,7 +5091,7 @@ function showDemoSuccess(name, skipped){
       </div>
     </div>
 
-    <div class="pii-note">🔒 <span><strong>Do not include personally identifiable student information.</strong> Enter aggregate district-wide percentages only — no names, student IDs, or individual records.</span></div>
+    <div class="pii-note">🔒 <span><strong>Do not include personally identifiable student information.</strong> Enter aggregate district wide percentages only. No names, student IDs, or individual records.</span></div>
   </div>
 
   <!-- SECTION 4: District Needs -->
@@ -5063,7 +5139,7 @@ function showDemoSuccess(name, skipped){
           <span class="upload-remove" onclick="removeUpload()">✕</span>
         </span>
       </div>
-      <span class="field-hint">PDF or Word document. Used as reference style/content for future AI drafts — not required to save your profile.</span>
+      <span class="field-hint">PDF or Word document. Used as reference style or content for future AI drafts. Not required to save your profile.</span>
     </div>
   </div>
 
@@ -5125,7 +5201,7 @@ function showDemoSuccess(name, skipped){
   <div class="profile-success-banner" id="demo-success-banner">
     <span class="profile-success-icon">✓</span>
     <div>
-      <div class="profile-success-title">Request received — thanks.</div>
+      <div class="profile-success-title">Request received. Thanks.</div>
       <div class="profile-success-text" id="demo-success-text">We'll be in touch by email shortly to arrange a time.</div>
     </div>
   </div>
