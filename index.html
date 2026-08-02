@@ -2819,6 +2819,11 @@ async function fetchGrantsGovLive(goal, needs, listEl){
           your district qualifies on the official listing before applying.
         </div>`;
 
+    // Print the exact URLs being rendered so they can be copied and tested.
+    districtHits.slice(0, 3).forEach((h, idx) =>
+      console.log('[TMW] Result ' + (idx+1) + ' link -> https://simpler.grants.gov/opportunity/' +
+                  h.id + '   (' + String(h.title || '').slice(0, 50) + ')'));
+
     document.getElementById('live-results-inner').innerHTML = noticeHtml +
       districtHits.slice(0, 12).map(h => {
         // Confirmed date format: "10/11/2023" (MM/DD/YYYY)
@@ -2835,7 +2840,11 @@ async function fetchGrantsGovLive(goal, needs, listEl){
           }
         }
         // Confirmed detail URL format from official docs
-        const detailUrl = `https://www.grants.gov/search-results-detail/${h.id}`;
+        // simpler.grants.gov renders the opportunity page reliably; the legacy
+        // www.grants.gov/search-results-detail/{id} route was redirecting to the
+        // homepage/contact page. Same numeric id, already validated as /^\d+$/
+        // before this point - non-numeric ids never reach here.
+        const detailUrl = `https://simpler.grants.gov/opportunity/${h.id}`;
         // Real API responses use cfdaList (confirmed via live [TMW] logs);
         // docs sample showed alnist — support both.
         const alnArr = h.cfdaList || h.alnist || [];
@@ -2857,14 +2866,14 @@ async function fetchGrantsGovLive(goal, needs, listEl){
           </div>
           <div class="live-grant-desc">
             Opportunity #${h.id} — posted ${h.openDate || 'recently'}. 
-            Click "View on Grants.gov" for the full description, eligibility details, 
+            Click "View full opportunity" for the full description, eligibility details, 
             and application materials.
           </div>
           <div class="live-grant-footer">
             <a class="btn-live-apply" href="${detailUrl}" target="_blank"
                rel="noopener noreferrer"
                onclick="openExternal('${detailUrl}',this)">
-              ↗ View on Grants.gov
+              ↗ View full opportunity
             </a>
           </div>
         </div>`;
