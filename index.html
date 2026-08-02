@@ -1499,7 +1499,6 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
     <li><a onclick="scrollToSection('problem')">The Problem</a></li>
     <li><a onclick="scrollToSection('solution')">How It Works</a></li>
     <li><a onclick="scrollToSection('pilot')">Start a Pilot</a></li>
-    <li id="nav-dashboard-link" style="display:none"><a onclick="goDashboard()">My Dashboard</a></li>
     <li id="nav-profile-link" style="display:none"><a onclick="goProfile()">District Profile</a></li>
     <li><button class="nav-signin-btn" id="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button><div class="nav-user-pill" id="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar" id="nav-user-avatar">?</div><span id="nav-user-name">Account</span></div></li>
     <li><a class="nav-cta" onclick="goSearch()">Get Started</a></li>
@@ -1771,6 +1770,61 @@ function scrollToSection(id) {
 }
 
 /* ── USER ACCOUNT STATE ───────────────────────────────────────── */
+// ── Session persistence ───────────────────────────────────────────────────
+// Stored in this browser only. There is no server and no account system, so
+// data does not follow the user to another device and is not visible to us.
+// Enough to make the tool remember a district administrator between visits.
+const TMW_STORAGE_KEY = 'tmw_session_v1';
+
+function persistSession(){
+  try {
+    localStorage.setItem(TMW_STORAGE_KEY, JSON.stringify({
+      v: 1,
+      currentUser: currentUser,
+      searches: accountData.searches,
+      drafts: accountData.drafts,
+      districtProfile: districtProfile,
+      savedAt: Date.now()
+    }));
+  } catch(e){
+    console.warn('[TMW] Could not save session (storage blocked or full):', e.message);
+  }
+}
+
+function restoreSession(){
+  try {
+    const raw = localStorage.getItem(TMW_STORAGE_KEY);
+    if(!raw){ console.log('[TMW] No saved session — starting fresh.'); return; }
+    const d = JSON.parse(raw);
+    if(!d || d.v !== 1){ console.warn('[TMW] Saved session has an unknown format — ignoring.'); return; }
+    if(d.currentUser) currentUser = d.currentUser;
+    if(Array.isArray(d.searches)) accountData.searches = d.searches;
+    if(Array.isArray(d.drafts))   accountData.drafts   = d.drafts;
+    if(d.districtProfile)         districtProfile      = d.districtProfile;
+    if(currentUser){
+      updateNavUser();
+      console.log('[TMW] Session restored for ' + currentUser.name +
+                  ' (' + accountData.searches.length + ' searches, ' +
+                  accountData.drafts.length + ' drafts' +
+                  (districtProfile ? ', district profile saved' : '') + ')');
+    }
+  } catch(e){
+    console.warn('[TMW] Could not restore session:', e.message);
+  }
+}
+
+function signOut(){
+  try { localStorage.removeItem(TMW_STORAGE_KEY); } catch(e){}
+  currentUser = null;
+  accountData.searches = [];
+  accountData.drafts   = [];
+  districtProfile = null;
+  document.querySelectorAll('.nav-user-pill').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.remove('hide'));
+  console.log('[TMW] Signed out — saved session cleared from this browser.');
+  goHome();
+}
+
 let currentUser = null;   // null = guest
 let pendingAction = null; // 'generateDraft' | 'download' | 'improve'
 let pendingArgs   = null;
@@ -1794,6 +1848,7 @@ function saveSearch(district,state,goal,students,count,needs,amount){
   if(!isLoggedIn()) return;
   accountData.searches.unshift({district,state,goal,students,count,needs,amount,date:new Date().toLocaleDateString(),time:Date.now()});
   if(accountData.searches.length>10) accountData.searches.pop();
+  persistSession();
 }
 
 function saveDraft(grantName,goal){
@@ -1802,6 +1857,7 @@ function saveDraft(grantName,goal){
   if(existing){ existing.date=new Date().toLocaleDateString(); return; }
   accountData.drafts.unshift({grant:grantName,goal,date:new Date().toLocaleDateString(),status:'In Progress',pct:30,time:Date.now()});
   if(accountData.drafts.length>20) accountData.drafts.pop();
+  persistSession();
 }
 
 function bumpDraftProgress(grantName,amount){
@@ -1811,6 +1867,7 @@ function bumpDraftProgress(grantName,amount){
   d.pct=Math.min(100,(d.pct||30)+amount);
   d.date=new Date().toLocaleDateString();
   if(d.pct>=100){ d.pct=100; d.status='Complete'; }
+  persistSession();
 }
 
 /* ── DASHBOARD QUICK ACTIONS ──────────────────────────────────── */
@@ -3843,6 +3900,7 @@ function submitAccount(){
 
     currentUser=lead;
     updateNavUser();
+    persistSession();
 
     if(modalMode==='edit'){
       document.getElementById('modal-form-state').style.display='none';
@@ -3883,9 +3941,8 @@ function updateNavUser(){
     if(av) av.textContent=initials;
     if(nm) nm.textContent=firstName;
   });
-  // Show dashboard + profile links in home nav (has explicit id)
-  const dashLink=document.getElementById('nav-dashboard-link');
-  if(dashLink) dashLink.style.display='list-item';
+  // The account pill itself links to the dashboard, so no separate
+  // "My Dashboard" item is needed - it pointed to the same place.
   const profLink=document.getElementById('nav-profile-link');
   if(profLink) profLink.style.display='list-item';
 }
@@ -4283,6 +4340,7 @@ function saveDistrictProfile(){
   if(districtProfile.state) cState=districtProfile.state;
   if(districtProfile.students) cStudents=districtProfile.students;
   if(currentUser && districtProfile.districtName) currentUser.district=districtProfile.districtName;
+  persistSession();
 
   updateCompleteness();
 
@@ -4295,6 +4353,12 @@ function saveDistrictProfile(){
   updateNavUser();
 }
 
+
+// Restore any saved session as soon as the DOM is ready. Runs after all
+// declarations are initialised, so accountData / districtProfile exist.
+document.addEventListener('DOMContentLoaded', function(){
+  restoreSession();
+});
 </script>
 
 <!-- ════════════════════════════════════════════════════
@@ -4582,6 +4646,7 @@ function saveDistrictProfile(){
         <div class="profile-role" id="dash-profile-role">—</div>
         <div class="profile-district-badge">🏫 <span id="dash-profile-district">—</span></div>
         <div style="margin-top:.6rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goProfile()">Edit full district profile →</a></div>
+        <div style="margin-top:.4rem;"><a style="font-size:.74rem;color:#94a3b8;cursor:pointer;text-decoration:underline;" onclick="signOut()">Sign out of this browser</a></div>
         <div class="profile-stats">
           <div class="profile-stat"><div class="profile-stat-num" id="ps-searches">0</div><div class="profile-stat-lbl">Searches</div></div>
           <div class="profile-stat"><div class="profile-stat-num" id="ps-drafts">0</div><div class="profile-stat-lbl">Drafts</div></div>
