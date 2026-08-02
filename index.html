@@ -2665,11 +2665,19 @@ function isTopicallyIrrelevant(h, goal){
   // 1. Must be about the funding goal the user selected.
   if (rx && !rx.test(text)) return true;
 
-  // 2. Must be school-situated. Checked against the TITLE ONLY - agency names
-  //    such as "Administration for Children and Families" or "Office of
-  //    Elementary and Secondary Education" contain context words and would
-  //    wave through anything that agency happens to fund.
-  if (!SCHOOL_CONTEXT.test(title)) return true;
+  // 2. Must be school-situated - but ONLY for non-education agencies.
+  //    Testing against real federal grants showed this rule alone was
+  //    discarding 7 of 8 genuine district opportunities: "Perkins V
+  //    Innovation and Modernization", "Education Innovation and Research",
+  //    "21st Century Community Learning Centers" contain no school/student/
+  //    teacher word in the title, yet are core K-12 district programs.
+  //    A Department of Education grant is inherently school-situated, so the
+  //    gate applies only to outside agencies - which is where the noise came
+  //    from anyway (NPS theatre, SAMHSA clinics, USDA agriculture research).
+  const isEducationAgency =
+    /^ED\b|^ED-|department of education|institute of education sciences|OSER|OSEP|OESE|OCTAE/i
+      .test(String(h.agencyCode || '') + ' ' + String(h.agency || ''));
+  if (!isEducationAgency && !SCHOOL_CONTEXT.test(title)) return true;
 
   // 3. Postsecondary-only, with no K-12 signal anywhere.
   if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) return true;
