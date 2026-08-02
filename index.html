@@ -2601,30 +2601,34 @@ let liveSearchSeq = 0;
 // goals. The API cannot fix this, so we score relevance ourselves: a grant
 // must actually mention something belonging to the selected category.
 const GOAL_TERMS = {
+  // Leading \b anchors the word start; NO trailing \b after a prefix, because
+  // "technolog\b" fails on "Technology" and "mathematic\b" fails on
+  // "Mathematics" (the next char is a word char). Short whole words that are
+  // substrings of common English - dance, art, math - keep both boundaries.
   'STEM':
-    /\b(stem|science|scientific|technolog|engineering|mathematic|math|computer science|coding|robotic)\b/i,
+    /\b(stem|science|scientific|technolog|engineer|mathematic|\bmath\b|computer|coding|robotic|biolog|chemistr|physics)/i,
   'School Safety':
-    /(school safety|student safety|campus safety|school violence|school security|school climate|bully|threat assessment|school emergency|school resource officer|safe schools)/i,
+    /(school safety|student safety|campus safety|school violence|school security|school climate|bully|threat assessment|school emergency|resource officer|safe school)/i,
   'Technology':
-    /(educational technology|edtech|digital learning|broadband|connectivity|e-rate|computer|device|one-to-one|1:1)/i,
+    /(educational technolog|edtech|digital learning|broadband|connectivity|e-rate|computer|device|one-to-one|1:1|internet access)/i,
   'Aspiring Teacher Pathways':
-    /(teacher preparation|teacher pipeline|aspiring teacher|teacher residency|educator preparation|teacher recruitment|grow your own|teacher apprentice)/i,
+    /(teacher preparation|teacher pipeline|aspiring teacher|teacher residency|educator preparation|teacher recruitment|grow your own|teacher apprentice|teacher scholarship|future teacher)/i,
   'New Teacher Development':
     /(teacher induction|new teacher|teacher mentor|early career teacher|teacher retention|novice teacher)/i,
   'Professional Development':
-    /(professional development|educator development|teacher training|instructional coach|educator effectiveness|teacher quality)/i,
+    /(professional development|educator development|teacher training|instructional coach|educator effectiveness|teacher quality|teacher leader)/i,
   'Special Education':
-    /(special education|students? with disabilit|\bidea\b|\biep\b|osep|osers|autism|inclusive education|early intervention|assistive technolog)/i,
+    /(special education|disabilit|\bidea\b|\biep\b|osep|osers|autism|inclusive education|early intervention|assistive technolog|exceptional child)/i,
   'Athletics':
-    /(physical education|physical activity|athletic|\bsports?\b|recreation|fitness)/i,
+    /(physical education|physical activity|athletic|\bsports?\b|recreation|fitness|playground)/i,
   'Arts':
-    /(\barts?\b|music|theat(er|re)|dance|visual art|creative writing|humanities)/i,
+    /(\barts?\b|\bmusic|\btheat(er|re)|\bdance\b|\bdancing\b|visual art|performing art|creative writing|humanities|\bchoir\b|\bband\b)/i,
   'Infrastructure':
-    /(facilit|construction|renovation|modernization|infrastructure|school building|school bus|hvac|energy efficien)/i,
+    /(facilit|construction|renovation|moderniz|infrastructure|school building|school bus|hvac|energy efficien|deferred maintenance)/i,
   'Mental Health':
-    /(mental health|behavioral health|social.emotional|counsel|psycholog|suicide|trauma|wellness|substance (use|abuse) prevention)/i,
+    /(mental health|behavioral health|social.emotional|counsel|psycholog|suicide|trauma|wellness|bullying|substance (use|abuse) prevention|school.based health)/i,
   'Career and Technical Education':
-    /(career and technical|career.technical|\bcte\b|vocational|workforce|apprentice|career pathway|work.based learning|perkins|industry certification)/i,
+    /(career and technical|career.technical|\bcte\b|vocational|workforce|apprentice|career pathway|work.based learning|perkins|industry certification|job training)/i,
 };
 
 // Postsecondary-only opportunities. Districts cannot use these, and they were
@@ -2653,15 +2657,23 @@ const SCHOOL_CONTEXT =
   /(school|student|pupil|classroom|k-?12|prek|pre-k|preschool|kindergarten|elementary|secondary|district|teacher|educator|instruction|curriculum|academic|youth|children|learner)/i;
 
 function isTopicallyIrrelevant(h, goal){
-  const text = decodeEntities(h.title) + ' ' +
-               String(h.agencyCode || '') + ' ' + String(h.agency || '');
+  const title = decodeEntities(h.title);
+  // Topic may be signalled by the agency too (e.g. agencyCode "ED", "OSEP").
+  const text  = title + ' ' + String(h.agencyCode || '') + ' ' + String(h.agency || '');
   const rx = GOAL_TERMS[goal];
-  // Must be about the funding goal the user selected.
+
+  // 1. Must be about the funding goal the user selected.
   if (rx && !rx.test(text)) return true;
-  // Must be situated in a school/district context, not a clinic, farm or park.
-  if (!SCHOOL_CONTEXT.test(text)) return true;
-  // Postsecondary-only, with no K-12 signal anywhere in the text.
+
+  // 2. Must be school-situated. Checked against the TITLE ONLY - agency names
+  //    such as "Administration for Children and Families" or "Office of
+  //    Elementary and Secondary Education" contain context words and would
+  //    wave through anything that agency happens to fund.
+  if (!SCHOOL_CONTEXT.test(title)) return true;
+
+  // 3. Postsecondary-only, with no K-12 signal anywhere.
   if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) return true;
+
   return false;
 }
 
@@ -3094,42 +3106,46 @@ window.TMW_audit = async function(goals){
   for (const goal of list) {
     const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal];
     const keywords = Array.isArray(ladder) ? ladder : [ladder];
+    // Mirror production exactly: all keywords in parallel, merged + deduped,
+    // narrowest shape first.
     const shapes = [
       { id:'category', extra:{ fundingCategories:'ED' } },
       { id:'broad',    extra:{} },
     ];
     let done = false;
-    for (const kw of [keywords[0], keywords[1]].filter(Boolean)) {
-      for (const sh of shapes) {
-        if (done) break;
-        try {
+    for (const sh of shapes) {
+      if (done) break;
+      try {
+        const settled = await Promise.all(keywords.map(async kw => {
           const body = Object.assign({ keyword:kw, oppStatuses:'posted',
                         rows: LIVE_SEARCH_ROWS, startRecordNum:0 }, sh.extra);
           const r = await fetch('/api/grants', { method:'POST',
                       headers:{'Content-Type':'application/json'},
                       body: JSON.stringify(body) });
           const d = await r.json();
-          const hits  = (d.data && d.data.oppHits) || [];
-          const valid = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
-          const keep  = valid.filter(h => !isNonDistrictOpportunity(h)
-                                       && !isResearchOnlyOpportunity(h)
-                                       && !isTopicallyIrrelevant(h, goal));
-          if (!keep.length) continue;
-          done = true;
-          say('');
-          say('--- ' + goal + ' ---');
-          say('keyword: "' + kw + '"  shape: ' + sh.id +
-              '  raw:' + ((d.data&&d.data.hitCount)||0) +
-              '  returned:' + valid.length + '  shown:' + Math.min(keep.length,12));
-          keep.slice(0,12).forEach(h => {
-            const code = (h.agencyCode||'?');
-            say('   ' + code.padEnd(12).slice(0,12) + ' | ' +
-                decodeEntities(h.title).slice(0,72));
-            (seen[h.id] = seen[h.id] || { title:decodeEntities(h.title), goals:[] }).goals.push(goal);
-          });
-        } catch(e) { say('   ERROR: ' + e.message); }
-      }
-      if (done) break;
+          return { hits:(d.data && d.data.oppHits) || [],
+                   hitCount:(d.data && d.data.hitCount) || 0 };
+        }));
+        const byId = {};
+        settled.forEach(x => x.hits.forEach(h => { if (h && h.id != null) byId[h.id] = h; }));
+        const merged = Object.values(byId);
+        const valid  = merged.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
+        const keep   = valid.filter(h => !isNonDistrictOpportunity(h)
+                                      && !isResearchOnlyOpportunity(h)
+                                      && !isTopicallyIrrelevant(h, goal));
+        if (!keep.length) continue;
+        done = true;
+        const rawTotal = settled.reduce((a,x)=>a+x.hitCount,0);
+        say('');
+        say('--- ' + goal + ' ---');
+        say('keywords: ' + JSON.stringify(keywords) + '  shape: ' + sh.id);
+        say('rawTotal:' + rawTotal + '  merged:' + valid.length + '  shown:' + Math.min(keep.length,12));
+        keep.slice(0,12).forEach(h => {
+          say('   ' + String(h.agencyCode||'?').padEnd(12).slice(0,12) + ' | ' +
+              decodeEntities(h.title).slice(0,72));
+          (seen[h.id] = seen[h.id] || { title:decodeEntities(h.title), goals:[] }).goals.push(goal);
+        });
+      } catch(e) { say('   ERROR: ' + e.message); }
     }
     if (!done) { say(''); say('--- ' + goal + ' ---'); say('   (no results)'); }
   }
