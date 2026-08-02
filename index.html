@@ -2592,6 +2592,68 @@ function isResearchOnlyOpportunity(h){
 let liveSearchController = null;
 let liveSearchSeq = 0;
 
+
+// ── Layer 3: topical relevance to the CHOSEN funding goal ─────────────────
+// The grants.gov keyword search ORs its terms and does not rank by relevance,
+// so "school safety" matches "MINE HEALTH AND SAFETY STATE GRANTS" and
+// "arts education" matches "Fair Housing ... Education and Outreach". A live
+// audit showed the same ~12 generic grants surfacing under all six funding
+// goals. The API cannot fix this, so we score relevance ourselves: a grant
+// must actually mention something belonging to the selected category.
+const GOAL_TERMS = {
+  'STEM':
+    /\b(stem|science|scientific|technolog|engineering|mathematic|math|computer science|coding|robotic)\b/i,
+  'School Safety':
+    /(school safety|student safety|campus safety|school violence|school security|school climate|bully|threat assessment|school emergency|school resource officer|safe schools)/i,
+  'Technology':
+    /(educational technology|edtech|digital learning|broadband|connectivity|e-rate|computer|device|one-to-one|1:1)/i,
+  'Aspiring Teacher Pathways':
+    /(teacher preparation|teacher pipeline|aspiring teacher|teacher residency|educator preparation|teacher recruitment|grow your own|teacher apprentice)/i,
+  'New Teacher Development':
+    /(teacher induction|new teacher|teacher mentor|early career teacher|teacher retention|novice teacher)/i,
+  'Professional Development':
+    /(professional development|educator development|teacher training|instructional coach|educator effectiveness|teacher quality)/i,
+  'Special Education':
+    /(special education|students? with disabilit|\bidea\b|\biep\b|osep|osers|autism|inclusive education|early intervention|assistive technolog)/i,
+  'Athletics':
+    /(physical education|physical activity|athletic|\bsports?\b|recreation|fitness)/i,
+  'Arts':
+    /(\barts?\b|music|theat(er|re)|dance|visual art|creative writing|humanities)/i,
+  'Infrastructure':
+    /(facilit|construction|renovation|modernization|infrastructure|school building|school bus|hvac|energy efficien)/i,
+  'Mental Health':
+    /(mental health|behavioral health|social.emotional|counsel|psycholog|suicide|trauma|wellness|substance (use|abuse) prevention)/i,
+  'Career and Technical Education':
+    /(career and technical|career.technical|\bcte\b|vocational|workforce|apprentice|career pathway|work.based learning|perkins|industry certification)/i,
+};
+
+// Postsecondary-only opportunities. Districts cannot use these, and they were
+// a large share of the noise (NASA Space Grant College & Fellowship, EONS
+// Minority University Research). Dropped unless the title also signals K-12.
+const HIGHER_ED_ONLY =
+  /(universit|college|postsecondary|graduate student|postdoctoral|fellowship|faculty|undergraduate)/i;
+const K12_SIGNAL =
+  /(k-12|k12|prek|pre-k|preschool|elementary|secondary school|middle school|high school|school district|\blea\b|local educational agenc|classroom|pupil|student achievement)/i;
+
+function decodeEntities(s){
+  return String(s || '')
+    .replace(/&ndash;/g,'–').replace(/&mdash;/g,'—')
+    .replace(/&amp;/g,'&').replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+}
+
+function isTopicallyIrrelevant(h, goal){
+  const text = decodeEntities(h.title) + ' ' +
+               String(h.agencyCode || '') + ' ' + String(h.agency || '');
+  const rx = GOAL_TERMS[goal];
+  // Unknown goal -> do not filter on topic (fail open rather than blank).
+  if (rx && !rx.test(text)) return true;
+  // Postsecondary-only, with no K-12 signal anywhere in the text.
+  if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) return true;
+  return false;
+}
+
 async function fetchGrantsGovLive(goal, needs, listEl){
   // 1. Cancel any in-flight request from a previous search
   if (liveSearchController) {
@@ -2728,11 +2790,19 @@ async function fetchGrantsGovLive(goal, needs, listEl){
 
       // Layer 2 — biomedical / research-only
       const L2_drop      = afterL1.filter(h => isResearchOnlyOpportunity(h));
-      const districtHits = afterL1.filter(h => !isResearchOnlyOpportunity(h));
+      const afterL2      = afterL1.filter(h => !isResearchOnlyOpportunity(h));
       console.log('[TMW] Layer 2 (research-only agencies): ' + afterL1.length + ' -> ' +
-                  districtHits.length + '   (removed ' + L2_drop.length + ')');
+                  afterL2.length + '   (removed ' + L2_drop.length + ')');
       L2_drop.forEach(h => console.log('[TMW]   x dropped [research]:', h.number || h.id,
         '|', h.agencyCode || '', '|', (h.title || '').slice(0, 60)));
+
+      // Layer 3 - must actually be about the funding goal the user selected
+      const L3_drop      = afterL2.filter(h => isTopicallyIrrelevant(h, goal));
+      const districtHits = afterL2.filter(h => !isTopicallyIrrelevant(h, goal));
+      console.log('[TMW] Layer 3 (topical match to "' + goal + '"): ' + afterL2.length +
+                  ' -> ' + districtHits.length + '   (removed ' + L3_drop.length + ')');
+      L3_drop.forEach(h => console.log('[TMW]   x dropped [off-topic]:', h.number || h.id,
+        '|', h.agencyCode || '', '|', decodeEntities(h.title).slice(0, 60)));
 
       console.log('[TMW] NET for "' + keyword + '": ' + validHits.length + ' raw -> ' +
                   districtHits.length + ' district-relevant');
@@ -2797,7 +2867,7 @@ async function fetchGrantsGovLive(goal, needs, listEl){
         return `<div class="live-grant-card">
           <div class="live-grant-top">
             <div>
-              <div class="live-grant-name">${h.title || 'Federal Grant Opportunity'}</div>
+              <div class="live-grant-name">${decodeEntities(h.title) || 'Federal Grant Opportunity'}</div>
               <div class="live-grant-agency">${h.agencyName || h.agency || h.agencyCode || 'Federal Agency'}</div>
             </div>
             <span class="live-grant-tag">🟢 Live Federal</span>
@@ -3048,7 +3118,8 @@ window.TMW_audit = async function(goals){
           const hits  = (d.data && d.data.oppHits) || [];
           const valid = hits.filter(h => h && h.id && /^\d+$/.test(String(h.id).trim()));
           const keep  = valid.filter(h => !isNonDistrictOpportunity(h)
-                                       && !isResearchOnlyOpportunity(h));
+                                       && !isResearchOnlyOpportunity(h)
+                                       && !isTopicallyIrrelevant(h, goal));
           if (!keep.length) continue;
           done = true;
           say('');
@@ -3059,8 +3130,8 @@ window.TMW_audit = async function(goals){
           keep.slice(0,12).forEach(h => {
             const code = (h.agencyCode||'?');
             say('   ' + code.padEnd(12).slice(0,12) + ' | ' +
-                String(h.title||'').slice(0,72));
-            (seen[h.id] = seen[h.id] || { title:h.title, goals:[] }).goals.push(goal);
+                decodeEntities(h.title).slice(0,72));
+            (seen[h.id] = seen[h.id] || { title:decodeEntities(h.title), goals:[] }).goals.push(goal);
           });
         } catch(e) { say('   ERROR: ' + e.message); }
       }
