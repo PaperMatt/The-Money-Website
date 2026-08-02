@@ -1481,6 +1481,26 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 .nav-signin-btn:hover { background:var(--blue); border-color:var(--blue); color:white; }
 .nav-signin-btn.hide { display:none; }
 
+/* Sign-out: visible, but quieter than primary actions */
+.btn-signout {
+  display:none; align-items:center; gap:6px;
+  background:transparent; border:1.5px solid var(--gray-300);
+  color:var(--gray-600); border-radius:100px; padding:6px 14px;
+  font-family:'DM Sans',sans-serif; font-size:.8rem; font-weight:600;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.btn-signout:hover { border-color:var(--red); color:var(--red); background:var(--red-light); }
+.btn-signout.show { display:inline-flex; }
+
+/* Version sitting on the dark profile card */
+.profile-card-signout {
+  display:inline-flex; align-items:center; gap:6px; margin-top:.85rem;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25);
+  color:rgba(255,255,255,.9); border-radius:8px; padding:7px 14px;
+  font-family:'DM Sans',sans-serif; font-size:.8rem; font-weight:600;
+  cursor:pointer; transition:all .2s;
+}
+.profile-card-signout:hover { background:rgba(239,68,68,.25); border-color:rgba(239,68,68,.6); color:#fff; }
 </style>
 </head>
 <body>
@@ -1581,7 +1601,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
         Start Grant Search
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <button class="btn-ghost">Schedule a Demo</button>
+      <button class="btn-ghost" onclick="goDemo()">Schedule a Demo</button>
     </div>
     <p class="cta-note">No credit card required &nbsp;·&nbsp; No commitment &nbsp;·&nbsp; Setup in under 30 minutes</p>
   </div>
@@ -1753,7 +1773,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 
 <script>
 /* ── PAGE NAVIGATION ──────────────────────────────────────────── */
-const PAGES=['page-home','page-search','page-draft','page-dashboard','page-profile'];
+const PAGES=['page-home','page-search','page-draft','page-dashboard','page-profile','page-demo'];
 function showPage(id){
   PAGES.forEach(p=>document.getElementById(p).classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1764,6 +1784,7 @@ function goSearch()    { showPage('page-search'); applyDistrictProfileToSearch()
 function goDraft()     { showPage('page-draft'); updateNavUser(); }
 function goDashboard() { buildDashboard(); showPage('page-dashboard'); updateNavUser(); }
 function goProfile()   { buildProfilePage(); showPage('page-profile'); updateNavUser(); }
+function goDemo()      { buildDemoPage();    showPage('page-demo');    updateNavUser(); }
 function scrollToSection(id) {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior:'smooth' });
@@ -1821,6 +1842,7 @@ function signOut(){
   districtProfile = null;
   document.querySelectorAll('.nav-user-pill').forEach(p=>p.classList.remove('show'));
   document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.remove('hide'));
+  document.querySelectorAll('.btn-signout').forEach(b=>b.classList.remove('show'));
   console.log('[TMW] Signed out — saved session cleared from this browser.');
   goHome();
 }
@@ -3927,10 +3949,12 @@ function updateNavUser(){
   if(!currentUser){
     document.querySelectorAll('.nav-user-pill').forEach(p=>p.classList.remove('show'));
     document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.remove('hide'));
+    document.querySelectorAll('.btn-signout').forEach(b=>b.classList.remove('show'));
     return;
   }
-  // Signed in: hide the sign-in buttons, reveal the account pills.
+  // Signed in: hide the sign-in buttons, reveal the account pills + sign-out.
   document.querySelectorAll('.nav-signin-btn').forEach(b=>b.classList.add('hide'));
+  document.querySelectorAll('.btn-signout').forEach(b=>b.classList.add('show'));
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const firstName=currentUser.name.split(' ')[0];
   // Update every pill in every page nav
@@ -4359,6 +4383,131 @@ function saveDistrictProfile(){
 document.addEventListener('DOMContentLoaded', function(){
   restoreSession();
 });
+
+/* ── DEMO / PILOT REQUEST ─────────────────────────────────────── */
+// Delivered through the same Formspree form as lead capture, tagged with a
+// distinct subject and request_type so demo requests are easy to filter in
+// the inbox. The destination address is set on Formspree's side, not here.
+function buildDemoPage(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el && !el.value && v) el.value=v; };
+  // Pre-fill anything we already know so they aren't retyping it.
+  if(currentUser){
+    set('demo-name', currentUser.name);
+    set('demo-title', currentUser.title);
+    set('demo-district', currentUser.district);
+    set('demo-email', currentUser.email);
+  }
+  if(districtProfile){
+    set('demo-district', districtProfile.districtName);
+    set('demo-students', districtProfile.students);
+  }
+  const b=document.getElementById('demo-success-banner');
+  if(b) b.classList.remove('show');
+  const c=document.getElementById('demo-form-card');
+  if(c) c.style.display='';
+}
+
+function submitDemoRequest(){
+  const val=id=>{ const el=document.getElementById(id); return el?el.value.trim():''; };
+  const errEl=document.getElementById('demo-error');
+  const btn=document.getElementById('demo-submit-btn');
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
+
+  const required=[['demo-name','Full Name'],['demo-title','Job Title'],
+                  ['demo-district','School District'],['demo-email','Work Email'],
+                  ['demo-interest','what you\'re interested in']];
+  const missing=[];
+  required.forEach(([id,label])=>{
+    const el=document.getElementById(id);
+    if(!el.value.trim()){ el.classList.add('err'); missing.push(label); }
+    else el.classList.remove('err');
+  });
+  const email=val('demo-email');
+  if(email && email.indexOf('@')===-1){
+    document.getElementById('demo-email').classList.add('err');
+    missing.push('a valid Work Email');
+  }
+  if(missing.length){
+    if(errEl){
+      errEl.textContent='Please complete: '+missing.join(', ')+'.';
+      errEl.style.display='block';
+    }
+    return;
+  }
+
+  const payload={
+    request_type: 'PILOT / DEMO REQUEST',
+    name: val('demo-name'),
+    job_title: val('demo-title'),
+    district: val('demo-district'),
+    email: email,
+    phone: val('demo-phone') || '(not provided)',
+    student_count: val('demo-students') || '(not provided)',
+    interested_in: val('demo-interest'),
+    best_time: val('demo-timing') || '(not provided)',
+    message: val('demo-message') || '(none)',
+    _subject: 'DEMO REQUEST from '+val('demo-district')+' — '+val('demo-name')
+  };
+
+  if (FORMSPREE_FORM_ID === 'YOUR_FORM_ID_HERE') {
+    console.warn('[TMW] Demo request NOT sent — FORMSPREE_FORM_ID is still the placeholder.');
+    showDemoSuccess(val('demo-name'), true);
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent='Sending…';
+  console.log('[TMW] Demo request ATTEMPT -> https://formspree.io/f/'+FORMSPREE_FORM_ID);
+  console.log('[TMW] Payload:', JSON.stringify(payload));
+
+  fetch('https://formspree.io/f/'+FORMSPREE_FORM_ID, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){
+    return r.json().catch(function(){return null;}).then(function(body){
+      btn.disabled=false; btn.textContent='Send Request';
+      if(r.ok){
+        console.log('[TMW] ✓ Demo request SUCCEEDED (HTTP '+r.status+')');
+        showDemoSuccess(payload.name, false);
+        return;
+      }
+      var detail='';
+      if(body && body.errors && body.errors.length){
+        detail=body.errors.map(function(e){return e.message;}).join('; ');
+      }
+      console.error('[TMW] ✗ Demo request FAILED — HTTP '+r.status+(detail?' — '+detail:''));
+      if(errEl){
+        errEl.textContent="We couldn't send your request just now ("+(detail||('HTTP '+r.status))+
+                          "). Please try again, or email us directly.";
+        errEl.style.display='block';
+      }
+    });
+  })
+  .catch(function(err){
+    btn.disabled=false; btn.textContent='Send Request';
+    console.error('[TMW] ✗ Demo request FAILED — network error: '+err.message);
+    if(errEl){
+      errEl.textContent="We couldn't reach our server. Please check your connection and try again.";
+      errEl.style.display='block';
+    }
+  });
+}
+
+function showDemoSuccess(name, skipped){
+  const banner=document.getElementById('demo-success-banner');
+  const txt=document.getElementById('demo-success-text');
+  const card=document.getElementById('demo-form-card');
+  if(txt){
+    txt.textContent = skipped
+      ? 'Form not yet connected to email delivery — this submission was not sent.'
+      : 'Thanks, '+String(name).split(' ')[0]+' — we\'ll be in touch by email shortly to arrange a time.';
+  }
+  if(banner){ banner.classList.add('show'); }
+  if(card){ card.style.display='none'; }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 </script>
 
 <!-- ════════════════════════════════════════════════════
@@ -4553,9 +4702,12 @@ document.addEventListener('DOMContentLoaded', function(){
       <span class="sep">›</span>
       <span class="current">My Dashboard</span>
     </div>
-    <button class="btn-primary" style="padding:8px 18px;font-size:.85rem;" onclick="goSearch()">
-      + New Grant Search
-    </button>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+      <button class="btn-primary" style="padding:8px 18px;font-size:.85rem;" onclick="goSearch()">
+        + New Grant Search
+      </button>
+    </div>
   </div>
 </nav>
 
@@ -4646,7 +4798,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="profile-role" id="dash-profile-role">—</div>
         <div class="profile-district-badge">🏫 <span id="dash-profile-district">—</span></div>
         <div style="margin-top:.6rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goProfile()">Edit full district profile →</a></div>
-        <div style="margin-top:.4rem;"><a style="font-size:.74rem;color:#94a3b8;cursor:pointer;text-decoration:underline;" onclick="signOut()">Sign out of this browser</a></div>
+        <button class="profile-card-signout" onclick="signOut()">↩ Sign out of this browser</button>
         <div class="profile-stats">
           <div class="profile-stat"><div class="profile-stat-num" id="ps-searches">0</div><div class="profile-stat-lbl">Searches</div></div>
           <div class="profile-stat"><div class="profile-stat-num" id="ps-drafts">0</div><div class="profile-stat-lbl">Drafts</div></div>
@@ -4699,6 +4851,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div style="display:flex;align-items:center;gap:1rem;">
       <button class="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button>
       <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
       <span class="nav-back-btn" onclick="goDashboard()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Back to Dashboard
@@ -4931,6 +5084,133 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </footer>
 </div><!-- /page-profile -->
+
+
+<!-- ════════════ REQUEST A DEMO / PILOT ══════════════════════════ -->
+<div id="page-demo" class="page">
+
+<nav class="site-nav">
+  <div class="nav-logo" onclick="goHome()">
+    <div class="nav-logo-icon">$</div>
+    <span class="nav-logo-text">The Money Website</span>
+  </div>
+  <div class="nav-back-row">
+    <div class="nav-breadcrumb">
+      <span class="crumb-link" onclick="goHome()">Home</span>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">Request a Demo</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+      <span class="nav-back-btn" onclick="goHome()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to Home
+      </span>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="page-badge">🤝 Pilot &amp; Demo</div>
+    <h1>Request a Demo or Pilot</h1>
+    <p>Tell us about your district and what you'd like to see. We'll follow up by email to arrange a walkthrough or set up a free pilot for your team.</p>
+  </div>
+</div>
+
+<div class="search-main">
+
+  <!-- success -->
+  <div class="profile-success-banner" id="demo-success-banner">
+    <span class="profile-success-icon">✓</span>
+    <div>
+      <div class="profile-success-title">Request received — thanks.</div>
+      <div class="profile-success-text" id="demo-success-text">We'll be in touch by email shortly to arrange a time.</div>
+    </div>
+  </div>
+
+  <div class="form-card" id="demo-form-card">
+    <div class="form-card-title">Your District</div>
+    <div class="form-card-sub">All fields marked with <span style="color:var(--blue)">*</span> are required.</div>
+
+    <div class="form-grid form-grid-2">
+      <div class="field">
+        <label for="demo-name">Full Name <span class="req">*</span></label>
+        <input type="text" id="demo-name" placeholder="e.g. Matthew Robertson" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="demo-title">Job Title <span class="req">*</span></label>
+        <input type="text" id="demo-title" placeholder="e.g. Grant Coordinator" autocomplete="organization-title">
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="form-grid form-grid-2">
+      <div class="field">
+        <label for="demo-district">School District <span class="req">*</span></label>
+        <input type="text" id="demo-district" placeholder="e.g. Morongo Unified School District" autocomplete="organization">
+      </div>
+      <div class="field">
+        <label for="demo-email">Work Email <span class="req">*</span></label>
+        <input type="email" id="demo-email" placeholder="e.g. you@district.k12.ca.us" autocomplete="email">
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="form-grid form-grid-2">
+      <div class="field">
+        <label for="demo-phone">Phone <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+        <input type="tel" id="demo-phone" placeholder="e.g. (760) 555-0142" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="demo-students">Approx. Number of Students <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+        <input type="number" id="demo-students" placeholder="e.g. 8500" min="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title">What You're Looking For</div>
+    <div class="form-card-sub">This helps us tailor the conversation to your district's situation.</div>
+
+    <div class="field">
+      <label for="demo-interest">I'm interested in <span class="req">*</span></label>
+      <div class="select-wrap">
+        <select id="demo-interest">
+          <option value="">Select one…</option>
+          <option>A live walkthrough of the platform</option>
+          <option>Setting up a free pilot for my district</option>
+          <option>Both a walkthrough and a pilot</option>
+          <option>I have questions before deciding</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="field">
+      <label for="demo-timing">Best time to reach you <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+      <input type="text" id="demo-timing" placeholder="e.g. weekday mornings, or after 3pm PT">
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="field">
+      <label for="demo-message">Anything specific you'd like covered? <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+      <textarea id="demo-message" style="min-height:120px;" placeholder="e.g. We're a 9,000-student district focused on CTE and school safety funding. We'd like to see how drafting works and what it would take to get our grant team onboarded."></textarea>
+    </div>
+
+    <div class="modal-error" id="demo-error"></div>
+  </div>
+
+  <button class="btn-save-profile" id="demo-submit-btn" onclick="submitDemoRequest()">Send Request</button>
+  <div class="modal-privacy-note" style="margin-bottom:2rem;">We'll only use this information to contact you about a demo or pilot. No spam, ever.</div>
+
+</div>
+</div><!-- /page-demo -->
 
 <!-- DOWNLOAD TOAST -->
 <div class="dl-toast" id="dl-toast"></div>
