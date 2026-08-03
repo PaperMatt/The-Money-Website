@@ -2328,18 +2328,34 @@ function renderResults(goal,district,state,students,needs,amount){
 // canonical federal program phrasing and falls back to broader single concepts.
 // Only the KEYWORD widens here: eligibility 05 and agency exclusions never do.
 const GRANTSGOV_KEYWORD_MAP={
-  'STEM':                          ['STEM education', 'STEM', 'science education'],
-  'School Safety':                 ['school safety', 'school violence prevention', 'student safety'],
-  'Technology':                    ['educational technology', 'school technology', 'digital learning'],
-  'Aspiring Teacher Pathways':     ['teacher preparation', 'teacher pipeline', 'educator recruitment'],
-  'New Teacher Development':       ['teacher induction', 'teacher mentoring', 'teacher development'],
-  'Professional Development':      ['professional development teachers', 'educator development', 'teacher training'],
-  'Special Education':             ['special education', 'students with disabilities', 'disability'],
-  'Athletics':                     ['physical education', 'youth sports', 'physical activity'],
-  'Arts':                          ['arts education', 'arts in education', 'arts'],
-  'Infrastructure':                ['school facilities', 'school construction', 'school infrastructure'],
-  'Mental Health':                 ['school mental health', 'student mental health', 'youth mental health'],
-  'Career and Technical Education':['career technical education', 'career education', 'workforce development'],
+  // Five variants per goal, all fired IN PARALLEL and merged, using the
+  // vocabulary that actually appears in federal grant titles rather than
+  // generic phrasing. This widens the candidate pool only. No filter is
+  // relaxed by anything in this map.
+  'STEM':                          ['STEM education', 'science education', 'mathematics education',
+                                    'computer science education', 'engineering education'],
+  'School Safety':                 ['school safety', 'school violence prevention', 'school climate',
+                                    'bullying prevention', 'school emergency management'],
+  'Technology':                    ['educational technology', 'digital learning', 'school connectivity',
+                                    'broadband schools', 'computer science'],
+  'Aspiring Teacher Pathways':     ['teacher preparation', 'teacher pipeline', 'teacher residency',
+                                    'educator preparation', 'teacher scholarship'],
+  'New Teacher Development':       ['teacher induction', 'new teacher mentoring', 'teacher retention',
+                                    'educator support', 'teacher development'],
+  'Professional Development':      ['professional development educators', 'teacher training',
+                                    'instructional coaching', 'educator effectiveness', 'teacher quality'],
+  'Special Education':             ['special education', 'students with disabilities', 'IDEA',
+                                    'early intervention', 'assistive technology'],
+  'Athletics':                     ['physical education', 'physical activity', 'youth sports',
+                                    'school wellness', 'youth recreation'],
+  'Arts':                          ['arts education', 'arts in education', 'music education',
+                                    'creative youth development', 'humanities education'],
+  'Infrastructure':                ['school facilities', 'school construction', 'school modernization',
+                                    'clean school bus', 'school energy efficiency'],
+  'Mental Health':                 ['school based mental health', 'student mental health',
+                                    'school counseling', 'trauma informed schools', 'youth behavioral health'],
+  'Career and Technical Education':['career and technical education', 'Perkins career technical',
+                                    'career pathways', 'work based learning', 'youth apprenticeship'],
 };
 
 // ── Eligibility filter ────────────────────────────────────────────────────
@@ -4584,6 +4600,128 @@ function loadHomeStats(){
 }
 
 document.addEventListener('DOMContentLoaded', loadHomeStats);
+
+/* ── DEADLINE PARSER CHECK ────────────────────────────────────── */
+// Run in DevTools:  TMW_checkDates()
+// Runs the exact query the home stats strip uses and prints every closeDate
+// raw, parsed, and in days remaining, so the "closing within 30 days" figure
+// can be verified rather than trusted.
+window.TMW_checkDates = async function(){
+  const body = { keyword:'education', oppStatuses:'posted',
+                 fundingCategories:'ED', rows:100, startRecordNum:0 };
+  const r = await fetch('/api/grants', { method:'POST',
+              headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const d = await r.json();
+  const hits = (d.data && d.data.oppHits) || [];
+  const total = (d.data && d.data.hitCount) || 0;
+  const now = new Date();
+
+  const rows = [], unparseable = [];
+  let within30 = 0, past = 0, future = 0;
+
+  hits.forEach(h => {
+    const raw = h.closeDate;
+    if (!raw) { unparseable.push({ id:h.id, raw:'(missing)', title:String(h.title||'').slice(0,40) }); return; }
+    const p = String(raw).split('/');
+    if (p.length !== 3 || isNaN(+p[0]) || isNaN(+p[1]) || isNaN(+p[2])) {
+      unparseable.push({ id:h.id, raw:String(raw), title:String(h.title||'').slice(0,40) });
+      return;
+    }
+    const dt = new Date(+p[2], +p[0]-1, +p[1]);
+    const days = Math.ceil((dt - now) / 86400000);
+    if (days < 0) past++; else if (days <= 30) within30++; else future++;
+    rows.push({
+      raw: String(raw),
+      parsed: dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      days: days,
+      bucket: days < 0 ? 'PAST' : days <= 30 ? 'within 30' : 'later',
+      title: String(h.title||'').slice(0,42)
+    });
+  });
+
+  rows.sort((a,b)=>a.days-b.days);
+  console.log('[TMW-DATES] hitCount reported by API: ' + total);
+  console.log('[TMW-DATES] rows returned: ' + hits.length);
+  console.log('[TMW-DATES] parsed OK: ' + rows.length + ' | unparseable: ' + unparseable.length);
+  console.log('[TMW-DATES] already past: ' + past + ' | within 30 days: ' + within30 + ' | later: ' + future);
+  if (unparseable.length) {
+    console.warn('[TMW-DATES] These closeDate values could not be parsed:');
+    console.table(unparseable);
+  }
+  console.table(rows.slice(0, 40));
+  console.log('[TMW-DATES] The home page figure should equal "within 30 days" above: ' + within30);
+  return { total, returned: hits.length, within30, past, later: future, unparseable };
+};
+
+/* ── FUNNEL DIAGNOSTIC ────────────────────────────────────────── */
+// Run:  TMW_why('Arts')
+// Answers one question: is a category empty because too FEW candidates come
+// back, or because candidates arrive and a specific gate rejects them?
+// Widening keywords fixes the first. Only the second is a filter problem.
+window.TMW_why = async function(goal){
+  const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal];
+  const keywords = Array.isArray(ladder) ? ladder : [ladder];
+  const shapes   = [{id:'category', extra:{fundingCategories:'ED'}}, {id:'broad', extra:{}}];
+  console.log('[TMW-WHY] goal: ' + goal);
+  console.log('[TMW-WHY] keywords: ' + JSON.stringify(keywords));
+
+  for (const sh of shapes) {
+    const settled = await Promise.all(keywords.map(async kw => {
+      try {
+        const r = await fetch('/api/grants', { method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(Object.assign({keyword:kw, oppStatuses:'posted',
+                 rows:LIVE_SEARCH_ROWS, startRecordNum:0}, sh.extra)) });
+        const d = await r.json();
+        return { kw, hits:(d.data&&d.data.oppHits)||[], hitCount:(d.data&&d.data.hitCount)||0 };
+      } catch(e){ return { kw, hits:[], hitCount:0, err:e.message }; }
+    }));
+
+    const byId={}; settled.forEach(x=>x.hits.forEach(h=>{ if(h&&h.id!=null) byId[h.id]=h; }));
+    const merged=Object.values(byId);
+    const valid=merged.filter(h=>h&&h.id&&/^\d+$/.test(String(h.id).trim()));
+
+    // Walk each gate separately
+    const afterL1 = valid.filter(h=>!isNonDistrictOpportunity(h));
+    const afterL2 = afterL1.filter(h=>!isResearchOnlyOpportunity(h));
+
+    const rx = GOAL_TERMS[goal];
+    const failGoalTerms=[], failSchoolCtx=[], failHigherEd=[], passed=[];
+    afterL2.forEach(h=>{
+      const title = decodeEntities(h.title);
+      const text  = title + ' ' + String(h.agencyCode||'') + ' ' + String(h.agency||'');
+      const isEd  = /^ED\b|^ED-|department of education|institute of education sciences|OSER|OSEP|OESE|OCTAE/i.test(
+                      String(h.agencyCode||'') + ' ' + String(h.agency||''));
+      if (rx && !rx.test(text))                              failGoalTerms.push(title.slice(0,58));
+      else if (!isEd && !SCHOOL_CONTEXT.test(title))         failSchoolCtx.push(title.slice(0,58));
+      else if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) failHigherEd.push(title.slice(0,58));
+      else passed.push(title.slice(0,58));
+    });
+
+    console.log('%c[TMW-WHY] shape: ' + sh.id, 'font-weight:bold');
+    console.table(settled.map(s=>({keyword:s.kw, hitCount:s.hitCount, returned:s.hits.length})));
+    console.log('[TMW-WHY]   merged unique candidates : ' + valid.length);
+    console.log('[TMW-WHY]   rejected by L1 overseas  : ' + (valid.length-afterL1.length));
+    console.log('[TMW-WHY]   rejected by L2 research  : ' + (afterL1.length-afterL2.length));
+    console.log('[TMW-WHY]   rejected: wrong topic    : ' + failGoalTerms.length);
+    console.log('[TMW-WHY]   rejected: no school word : ' + failSchoolCtx.length);
+    console.log('[TMW-WHY]   rejected: higher ed only : ' + failHigherEd.length);
+    console.log('[TMW-WHY]   ==> DISPLAYED            : ' + passed.length);
+    if (failSchoolCtx.length) {
+      console.log('[TMW-WHY]   These matched the topic but had no school word in the title:');
+      failSchoolCtx.slice(0,10).forEach(t=>console.log('[TMW-WHY]      ' + t));
+    }
+    if (failGoalTerms.length && !passed.length) {
+      console.log('[TMW-WHY]   Sample of topic rejects (would widening vocabulary help?):');
+      failGoalTerms.slice(0,10).forEach(t=>console.log('[TMW-WHY]      ' + t));
+    }
+    console.log('[TMW-WHY]   VERDICT: ' + (
+      valid.length < 10 ? 'FEW CANDIDATES -> widen keywords'
+      : passed.length === 0 ? 'CANDIDATES REJECTED -> a gate above is too strict'
+      : 'working'));
+    if (passed.length) break;
+  }
+};
 </script>
 
 <!-- ════════════════════════════════════════════════════
