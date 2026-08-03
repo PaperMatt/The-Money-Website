@@ -4659,10 +4659,20 @@ window.TMW_checkDates = async function(){
 // back, or because candidates arrive and a specific gate rejects them?
 // Widening keywords fixes the first. Only the second is a filter problem.
 window.TMW_why = async function(goal){
-  const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal];
+ try {
+  console.log('%c===== TMW_why: ' + goal + ' =====', 'font-weight:bold;color:#2563eb');
+  if (typeof GRANTSGOV_KEYWORD_MAP === 'undefined') {
+    console.error('[TMW-WHY] Script not loaded properly. Hard refresh with Ctrl+Shift+R.');
+    return;
+  }
+  const ladder   = GRANTSGOV_KEYWORD_MAP[goal];
+  if (!ladder) {
+    console.error('[TMW-WHY] Unknown goal "' + goal + '". Valid values are:');
+    console.log(Object.keys(GRANTSGOV_KEYWORD_MAP).join(' | '));
+    return;
+  }
   const keywords = Array.isArray(ladder) ? ladder : [ladder];
   const shapes   = [{id:'category', extra:{fundingCategories:'ED'}}, {id:'broad', extra:{}}];
-  console.log('[TMW-WHY] goal: ' + goal);
   console.log('[TMW-WHY] keywords: ' + JSON.stringify(keywords));
 
   for (const sh of shapes) {
@@ -4672,17 +4682,29 @@ window.TMW_why = async function(goal){
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(Object.assign({keyword:kw, oppStatuses:'posted',
                  rows:LIVE_SEARCH_ROWS, startRecordNum:0}, sh.extra)) });
+        if (!r.ok) return { kw, hits:[], hitCount:0, err:'HTTP ' + r.status };
         const d = await r.json();
+        if (d.errorcode !== 0) return { kw, hits:[], hitCount:0, err:d.msg || 'api error' };
         return { kw, hits:(d.data&&d.data.oppHits)||[], hitCount:(d.data&&d.data.hitCount)||0 };
       } catch(e){ return { kw, hits:[], hitCount:0, err:e.message }; }
     }));
 
+    console.log('%c[TMW-WHY] shape: ' + sh.id, 'font-weight:bold');
+    settled.forEach(s2 => console.log('[TMW-WHY]   "' + s2.kw + '" -> hitCount ' + s2.hitCount +
+      ', returned ' + s2.hits.length + (s2.err ? '   ERROR: ' + s2.err : '')));
+
+    const errs = settled.filter(s2 => s2.err);
+    if (errs.length === settled.length) {
+      console.error('[TMW-WHY] Every request failed. The /api/grants proxy is not responding.');
+      console.error('[TMW-WHY] First error: ' + errs[0].err);
+      return;
+    }
+
     const byId={}; settled.forEach(x=>x.hits.forEach(h=>{ if(h&&h.id!=null) byId[h.id]=h; }));
     const merged=Object.values(byId);
     const valid=merged.filter(h=>h&&h.id&&/^\d+$/.test(String(h.id).trim()));
-
-    // Walk each gate separately
     const afterL1 = valid.filter(h=>!isNonDistrictOpportunity(h));
+    const L2rejects = afterL1.filter(h=>isResearchOnlyOpportunity(h));
     const afterL2 = afterL1.filter(h=>!isResearchOnlyOpportunity(h));
 
     const rx = GOAL_TERMS[goal];
@@ -4692,14 +4714,12 @@ window.TMW_why = async function(goal){
       const text  = title + ' ' + String(h.agencyCode||'') + ' ' + String(h.agency||'');
       const isEd  = /^ED\b|^ED-|department of education|institute of education sciences|OSER|OSEP|OESE|OCTAE/i.test(
                       String(h.agencyCode||'') + ' ' + String(h.agency||''));
-      if (rx && !rx.test(text))                              failGoalTerms.push(title.slice(0,58));
-      else if (!isEd && !SCHOOL_CONTEXT.test(title))         failSchoolCtx.push(title.slice(0,58));
-      else if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) failHigherEd.push(title.slice(0,58));
-      else passed.push(title.slice(0,58));
+      if (rx && !rx.test(text))                                     failGoalTerms.push(title.slice(0,60));
+      else if (!isEd && !SCHOOL_CONTEXT.test(title))                failSchoolCtx.push(title.slice(0,60));
+      else if (HIGHER_ED_ONLY.test(text) && !K12_SIGNAL.test(text)) failHigherEd.push(title.slice(0,60));
+      else passed.push(title.slice(0,60));
     });
 
-    console.log('%c[TMW-WHY] shape: ' + sh.id, 'font-weight:bold');
-    console.table(settled.map(s=>({keyword:s.kw, hitCount:s.hitCount, returned:s.hits.length})));
     console.log('[TMW-WHY]   merged unique candidates : ' + valid.length);
     console.log('[TMW-WHY]   rejected by L1 overseas  : ' + (valid.length-afterL1.length));
     console.log('[TMW-WHY]   rejected by L2 research  : ' + (afterL1.length-afterL2.length));
@@ -4707,20 +4727,34 @@ window.TMW_why = async function(goal){
     console.log('[TMW-WHY]   rejected: no school word : ' + failSchoolCtx.length);
     console.log('[TMW-WHY]   rejected: higher ed only : ' + failHigherEd.length);
     console.log('[TMW-WHY]   ==> DISPLAYED            : ' + passed.length);
+
+    if (L2rejects.length) {
+      console.log('[TMW-WHY]   Dropped as research-only (verify these are not district grants):');
+      L2rejects.slice(0,12).forEach(h=>console.log('[TMW-WHY]      ' +
+        String(h.agencyCode||'?').padEnd(12).slice(0,12) + ' | ' +
+        String(h.number||'').padEnd(14).slice(0,14) + ' | ' +
+        decodeEntities(h.title).slice(0,52)));
+    }
     if (failSchoolCtx.length) {
-      console.log('[TMW-WHY]   These matched the topic but had no school word in the title:');
+      console.log('[TMW-WHY]   Right topic, but no school word in title:');
       failSchoolCtx.slice(0,10).forEach(t=>console.log('[TMW-WHY]      ' + t));
     }
     if (failGoalTerms.length && !passed.length) {
-      console.log('[TMW-WHY]   Sample of topic rejects (would widening vocabulary help?):');
-      failGoalTerms.slice(0,10).forEach(t=>console.log('[TMW-WHY]      ' + t));
+      console.log('[TMW-WHY]   Sample rejected as off topic:');
+      failGoalTerms.slice(0,12).forEach(t=>console.log('[TMW-WHY]      ' + t));
     }
-    console.log('[TMW-WHY]   VERDICT: ' + (
-      valid.length < 10 ? 'FEW CANDIDATES -> widen keywords'
+    console.log('%c[TMW-WHY]   VERDICT: ' + (
+      valid.length === 0 ? 'NO CANDIDATES AT ALL -> the query returned nothing'
+      : valid.length < 10 ? 'FEW CANDIDATES -> widen keywords'
       : passed.length === 0 ? 'CANDIDATES REJECTED -> a gate above is too strict'
-      : 'working'));
+      : 'working, ' + passed.length + ' displayed'), 'font-weight:bold');
     if (passed.length) break;
   }
+  console.log('%c===== end ' + goal + ' =====', 'color:#2563eb');
+ } catch(err) {
+  console.error('[TMW-WHY] Diagnostic itself crashed: ' + (err && err.message));
+  console.error(err && err.stack);
+ }
 };
 </script>
 
