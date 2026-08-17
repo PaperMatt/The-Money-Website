@@ -1507,6 +1507,9 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
   text-align:center; font-size:.75rem; color:var(--gray-400);
   margin-top:1.5rem; letter-spacing:.01em;
 }
+.tag-state { background:#fef3c7; color:#92400e; }
+.grant-card[data-type="state"] { border-left:3px solid #f59e0b; }
+.tag-rescued { background:#fef3c7; color:#92400e; border:1px solid #fde68a; margin-left:.4rem; }
 </style>
 </head>
 <body>
@@ -2320,6 +2323,9 @@ function renderResults(goal,district,state,students,needs,amount){
 
   // Fire live Grants.gov federal search after static results render
   fetchGrantsGovLive(goal, needs, list);
+  // Additive parallel flow. Independent of the federal request above, so a
+  // failure or empty result in one never affects the other.
+  fetchCaliforniaGrants(goal, list);
 }
 
 /* ── LIVE GRANTS.GOV FEDERAL SEARCH ──────────────────────────── */
@@ -4758,6 +4764,419 @@ window.TMW_why = async function(goal){
   console.error('[TMW-WHY] Diagnostic itself crashed: ' + (err && err.message));
   console.error(err && err.stack);
  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CALIFORNIA STATE GRANTS  (California Grants Portal, data.ca.gov)
+   Additive. Does not touch the federal Grants.gov flow, the query shape
+   ladder, or the DOS/NIH exclusion layers.
+
+   Source     : California State Library, California Grants Portal
+   Dataset    : https://data.ca.gov/dataset/california-grants-portal
+   Resource   : 111c8c88-21f6-453c-ae2c-b4785a0624f5
+   Refresh    : once every 24 hours at 8:45pm Pacific. NOT real time, so
+                this section is labelled "Updated Daily", never "Live".
+   Statutory  : Grant Information Act of 2018 requires state agencies to
+                publish each opportunity with a link grantseekers can follow,
+                which is the GrantURL field used for each card.
+═══════════════════════════════════════════════════════════════════════ */
+
+// Real column names, confirmed by reading the published CSV header.
+const CA_FIELDS = {
+  id:'PortalID', title:'Title', agency:'AgencyDept', status:'Status',
+  type:'Type', categories:'Categories', purpose:'Purpose',
+  description:'Description', applicantType:'ApplicantType',
+  applicantNotes:'ApplicantTypeNotes', deadline:'ApplicationDeadline',
+  openDate:'OpenDate', estFunds:'EstAvailFunds', estAmounts:'EstAmounts',
+  grantUrl:'GrantURL', agencyUrl:'AgencyURL', lastUpdated:'LastUpdated',
+  fundingSource:'FundingSource', geography:'Geography'
+};
+
+// Per the portal glossary, "Public Agency" is defined as counties, cities,
+// special districts, PUBLIC K12 or higher education institutions, or any
+// other government entity. That is the eligibility gate for districts.
+const CA_ELIGIBLE_APPLICANT = 'public agency';
+
+// Category values used by the portal. "Education" is the primary signal.
+const CA_EDUCATION_CATEGORY = /education/i;
+
+// District specific vocabulary, checked across the rich text fields this
+// dataset provides. Deliberately excludes the bare word "education", which
+// on its own matches higher education and workforce programs.
+const CA_DISTRICT_TERMS =
+  /(school district|local educational agenc|\bLEA\b|county office of education|charter school|\bK-?12\b|\bTK-?12\b|public school|elementary school|middle school|high school|classroom|pupil|student|teacher|educator|curriculum|schoolsite|school site)/i;
+
+let caSearchController = null;
+let caSearchSeq = 0;
+
+function caGrantValue(rec, key){ return String(rec[CA_FIELDS[key]] || '').trim(); }
+
+// Deadline arrives as "2026-10-05 16:00:00", or "Ongoing", or empty.
+function caDeadlineInfo(rec){
+  const raw = caGrantValue(rec,'deadline');
+  if (!raw) return { text:'See listing', soon:false, past:false };
+  if (/ongoing|continuous|rolling/i.test(raw)) return { text:'Ongoing', soon:false, past:false };
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return { text:raw, soon:false, past:false };
+  const d = new Date(+m[1], +m[2]-1, +m[3]);
+  const days = Math.ceil((d - new Date()) / 86400000);
+  return {
+    text: d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    soon: days >= 0 && days <= 30,
+    past: days < 0,
+    days: days
+  };
+}
+
+// Some agencies mis-tag ApplicantType. Cal OES filed the Student Trauma
+// Notification Program as "Nonprofit" while its own description says
+// "Applicants must be a California School District or County Office of
+// Education." This pattern requires an EXPLICIT statement that districts or
+// county offices may apply, so it rescues genuine mis-tagged grants without
+// admitting anything that merely mentions schools in passing.
+const CA_EXPLICIT_DISTRICT_APPLICANT = new RegExp(
+  '(applicant|eligib|open|limited|restricted|must be|apply)' +   // eligibility language
+  '[^.]{0,120}?' +                                              // within the same sentence
+  '(school district|local educational agenc|\\bLEA\\b|county office of education|' +
+  'county offices of education|charter school)',
+  'i');
+
+// Eligibility gate. ApplicantType is semicolon delimited, e.g.
+// "Nonprofit; Public Agency; Tribal Government".
+function caIsPublicAgencyEligible(rec){
+  const tagged = caGrantValue(rec,'applicantType')
+    .split(';')
+    .map(s => s.trim().toLowerCase())
+    .indexOf(CA_ELIGIBLE_APPLICANT) !== -1;
+  if (tagged) return true;
+
+  // Rescue clause for mis-tagged records.
+  const eligibilityText = caGrantValue(rec,'applicantNotes') + ' ' +
+                          caGrantValue(rec,'description');
+  if (CA_EXPLICIT_DISTRICT_APPLICANT.test(eligibilityText)) {
+    rec.__rescued = true;
+    return true;
+  }
+  return false;
+}
+
+// TK-12 relevance. Uses the wide text this dataset provides, which is richer
+// than the federal feed and lets a grant qualify on its eligibility notes
+// even when the title alone gives nothing away.
+function caIsDistrictRelevant(rec){
+  const blob = [
+    caGrantValue(rec,'title'), caGrantValue(rec,'purpose'),
+    caGrantValue(rec,'description'), caGrantValue(rec,'applicantNotes'),
+    caGrantValue(rec,'categories'), caGrantValue(rec,'agency')
+  ].join(' ');
+  if (CA_DISTRICT_TERMS.test(blob)) return true;
+  // Education category plus public agency eligibility is itself a signal.
+  return CA_EDUCATION_CATEGORY.test(caGrantValue(rec,'categories'));
+}
+
+function caMatchesGoal(rec, goal){
+  const rx = GOAL_TERMS[goal];
+  if (!rx) return true;
+  return rx.test([
+    caGrantValue(rec,'title'), caGrantValue(rec,'purpose'),
+    caGrantValue(rec,'description'), caGrantValue(rec,'categories'),
+    caGrantValue(rec,'applicantNotes')
+  ].join(' '));
+}
+
+async function fetchCaliforniaGrants(goal, listEl){
+  if (caSearchController) caSearchController.abort();
+  caSearchController = new AbortController();
+  const signal = caSearchController.signal;
+  const mySeq  = ++caSearchSeq;
+  const isStale = () => mySeq !== caSearchSeq;
+
+  const existing = document.getElementById('ca-state-section');
+  if (existing) existing.remove();
+
+  const section = document.createElement('div');
+  section.id = 'ca-state-section';
+  section.style.cssText = 'margin-top:2.5rem;';
+  section.innerHTML = `
+    <div class="live-fed-header">
+      <span class="live-badge" id="ca-badge">&#8987;</span>
+      <span style="font-weight:600;color:var(--gray-800);" id="ca-header-label">Checking California Grants Portal&hellip;</span>
+      <span class="live-status-msg" id="ca-status"></span>
+    </div>
+    <div id="ca-results-inner">
+      <div class="live-loading-row"><span class="live-spinner"></span> Contacting data.ca.gov&hellip;</div>
+    </div>`;
+  listEl.parentElement.appendChild(section);
+
+  const ladder   = GRANTSGOV_KEYWORD_MAP[goal] || [goal];
+  const keywords = Array.isArray(ladder) ? ladder : [ladder];
+  const keyword  = keywords[0];
+
+  console.log('[TMW-CA] California Grants Portal search starting');
+  console.log('[TMW-CA] goal: ' + goal + ' | keyword: "' + keyword + '"');
+  console.log('[TMW-CA] dataset refreshes once daily at 8:45pm PT, so results are not real time');
+
+  try {
+    const t0 = Date.now();
+    const resp = await fetch('/api/ca-grants', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ keyword: keyword, limit: 300 }),
+      signal
+    });
+    if (isStale()) { console.log('[TMW-CA] superseded, discarding'); return; }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+
+    const data = await resp.json();
+    if (isStale()) return;
+    if (data.error) throw new Error(data.error + (data.detail ? ': ' + data.detail : ''));
+
+    const records = data.records || [];
+    console.log('[TMW-CA] served via: ' + data.source + ' in ' + (Date.now()-t0) + 'ms');
+    console.log('[TMW-CA] RAW records returned: ' + records.length +
+                ' (dataset matches: ' + (data.total != null ? data.total : 'n/a') + ')');
+    if (records.length) {
+      console.log('[TMW-CA] first record fields: ' + Object.keys(records[0]).join(', '));
+    }
+
+    // ---- Filter chain, each step reported separately -----------------
+    const openOnly = records.filter(r => /^active$/i.test(caGrantValue(r,'status')));
+    console.log('[TMW-CA] after status=active      : ' + openOnly.length +
+                '   (removed ' + (records.length - openOnly.length) + ' closed/forecasted)');
+
+    const eligible = openOnly.filter(caIsPublicAgencyEligible);
+    const rescued  = eligible.filter(r => r.__rescued);
+    console.log('[TMW-CA] after eligibility gate  : ' + eligible.length +
+                '   (removed ' + (openOnly.length - eligible.length) + ')');
+    if (rescued.length) {
+      console.log('[TMW-CA]   ' + rescued.length + ' admitted by the mis-tag rescue clause ' +
+                  '(ApplicantType omits Public Agency, but the eligibility text names districts):');
+      rescued.forEach(r => console.log('[TMW-CA]      ' + caGrantValue(r,'title').slice(0,60) +
+                  '   [tagged: ' + (caGrantValue(r,'applicantType') || 'blank') + ']'));
+    }
+
+    const relevant = eligible.filter(caIsDistrictRelevant);
+    console.log('[TMW-CA] after TK-12 relevance    : ' + relevant.length +
+                '   (removed ' + (eligible.length - relevant.length) + ')');
+
+    const onGoal = relevant.filter(r => caMatchesGoal(r, goal));
+    console.log('[TMW-CA] after topic match "' + goal + '" : ' + onGoal.length +
+                '   (removed ' + (relevant.length - onGoal.length) + ')');
+
+    // Statute requires a link grantseekers can follow. Drop anything without
+    // one rather than inventing a URL.
+    const linked = onGoal.filter(r => /^https?:\/\//i.test(caGrantValue(r,'grantUrl') || caGrantValue(r,'agencyUrl')));
+    if (onGoal.length !== linked.length) {
+      console.log('[TMW-CA] after has source link    : ' + linked.length +
+                  '   (removed ' + (onGoal.length - linked.length) + ' with no usable URL)');
+    }
+
+    console.log('[TMW-CA] NET: ' + records.length + ' raw -> ' + linked.length + ' shown');
+
+    const deepLink = 'https://www.grants.ca.gov/?s=' + encodeURIComponent(keyword);
+
+    if (!linked.length) {
+      console.warn('[TMW-CA] No California state grants matched. Showing honest empty state.');
+      document.getElementById('ca-badge').textContent = '\uD83D\uDD0D NO MATCHES';
+      document.getElementById('ca-header-label').textContent =
+        'No California state grants matched this search';
+      document.getElementById('ca-status').textContent = '';
+      document.getElementById('ca-results-inner').innerHTML = `
+        <div class="live-nomatch-banner">
+          <div class="live-nomatch-title">No California state grants matched this search</div>
+          <div class="live-nomatch-text">
+            The California Grants Portal returned ${records.length} record${records.length===1?'':'s'}
+            for <strong>${goal}</strong>, but none were both currently open and available to
+            public agencies such as school districts. No sample data is shown in their place.
+          </div>
+          <a class="btn-live-apply" href="${deepLink}" target="_blank" rel="noopener noreferrer"
+             onclick="openExternal('${deepLink}',this)">
+            &#8599; Browse all state grants on grants.ca.gov
+          </a>
+        </div>`;
+      caSearchController = null;
+      return;
+    }
+
+    // ---- Render ------------------------------------------------------
+    const soonCount = linked.filter(r => caDeadlineInfo(r).soon).length;
+    document.getElementById('ca-badge').textContent = '\uD83D\uDCC5 UPDATED DAILY';
+    document.getElementById('ca-header-label').textContent =
+      'California State Grants: Updated Daily';
+    document.getElementById('ca-status').textContent =
+      linked.length + ' open to public agencies' + (soonCount ? ', ' + soonCount + ' closing within 30 days' : '');
+
+    document.getElementById('ca-results-inner').innerHTML =
+      '<div class="eligibility-notice">Source: California Grants Portal, published by the ' +
+      'California State Library under the Grant Information Act of 2018. This dataset refreshes ' +
+      'once every 24 hours, so confirm details on the official listing before applying.</div>' +
+      linked.slice(0, 12).map(r => {
+        const title  = caGrantValue(r,'title') || 'State Grant Opportunity';
+        const agency = caGrantValue(r,'agency') || 'California State Agency';
+        const dl     = caDeadlineInfo(r);
+        const url    = caGrantValue(r,'grantUrl') || caGrantValue(r,'agencyUrl');
+        const pid    = caGrantValue(r,'id');
+        const cats   = caGrantValue(r,'categories');
+        const funds  = caGrantValue(r,'estFunds');
+        const amts   = caGrantValue(r,'estAmounts');
+        const oppType= caGrantValue(r,'type') || 'Grant';
+        const notes  = caGrantValue(r,'applicantNotes');
+        const purpose= caGrantValue(r,'purpose');
+        const applic = caGrantValue(r,'applicantType');
+        const vId    = 'ca-verify-' + (pid || Math.random().toString(36).slice(2));
+        const safeN  = title.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+
+        return `
+        <div class="grant-card" data-type="state">
+          <div class="grant-card-top">
+            <div>
+              <div class="grant-header">
+                <div class="grant-name">${title}</div>
+                <span class="grant-tag tag-state">California State</span>${r.__rescued?'<span class="grant-tag tag-rescued">Verify eligibility</span>':''}
+              </div>
+              <div class="grant-funder">${agency}</div>
+              <div class="grant-stats">
+                <div class="grant-stat"><span class="grant-stat-label">Deadline</span><span class="grant-stat-value ${dl.soon?'deadline-soon':''}">${dl.text}${dl.soon?' \u26A0\uFE0F':''}</span></div>
+                ${funds?`<div class="grant-stat"><span class="grant-stat-label">Total Available</span><span class="grant-stat-value amount-val">${funds}</span></div>`:''}
+                ${amts?`<div class="grant-stat"><span class="grant-stat-label">Per Award</span><span class="grant-stat-value">${amts}</span></div>`:''}
+              </div>
+            </div>
+          </div>
+          <div class="grant-body">
+
+            <div class="gc-section-label">\uD83C\uDFEB Why This Appears</div>
+            <div class="grant-why">
+              <div class="grant-why-text">${r.__rescued
+                ? 'This opportunity does not carry the <strong>Public Agency</strong> applicant tag, but its published eligibility text explicitly names school districts or county offices of education as applicants. Read the eligibility section below carefully before applying.'
+                : 'This opportunity is currently open and lists <strong>Public Agency</strong> among its eligible applicants, which the California Grants Portal defines as including public K12 institutions.'
+              } It matched your <strong>${goal}</strong> search.${purpose?' Stated purpose: ' + purpose.slice(0,180) + (purpose.length>180?'\u2026':''):''}</div>
+            </div>
+
+            <div class="verify-block" id="${vId}">
+              <div class="verify-header" onclick="toggleVerifyBlock('${vId}')">
+                <span class="verify-header-label">\uD83D\uDD0E Verification Details</span>
+                <span class="verify-chevron">\u25BE</span>
+              </div>
+              <div class="verify-content">
+                <a class="btn-source-link" href="${url}" target="_blank" rel="noopener noreferrer"
+                   onclick="openExternal('${url}',this)">&#8599; View full opportunity</a>
+                <div class="source-url-fallback">${url}</div>
+                <div class="verify-row">
+                  <div class="verify-item"><div class="verify-item-label">Administering Agency</div><div class="verify-item-value">${agency}</div></div>
+                  <div class="verify-item"><div class="verify-item-label">Opportunity Type</div><div class="verify-item-value">${oppType}</div></div>
+                </div>
+                <div class="verify-row">
+                  <div class="verify-item"><div class="verify-item-label">Portal ID</div><div class="verify-item-value">${pid||'\u2014'}</div></div>
+                  <div class="verify-item"><div class="verify-item-label">Funding Source</div><div class="verify-item-value">${caGrantValue(r,'fundingSource')||'\u2014'}</div></div>
+                </div>
+                ${cats?`<div class="verify-subsection"><div class="verify-subsection-label">Categories</div><div class="verify-subsection-text">${cats}</div></div>`:''}
+                <div class="verify-subsection">
+                  <div class="verify-subsection-label">Eligible Applicants</div>
+                  <div class="verify-subsection-text">${applic||'\u2014'}${notes?'<br><br>'+notes.slice(0,420)+(notes.length>420?'\u2026':''):''}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="caution-note">\u26A0\uFE0F <span>State data refreshes once daily. Verify eligibility, deadlines, and requirements on the official listing before applying.</span></div>
+
+          </div>
+          <div class="grant-card-footer">
+            <a class="btn-source-link" style="margin-top:0;" href="${url}" target="_blank"
+               rel="noopener noreferrer" onclick="openExternal('${url}',this)">&#8599; View full opportunity</a>
+            <button class="btn-draft" onclick="generateDraft('${safeN}')">\u2726 Generate Draft</button>
+          </div>
+        </div>`;
+      }).join('') +
+      `<div style="margin-top:1rem;text-align:center;">
+         <a class="btn-live-all" href="${deepLink}" target="_blank" rel="noopener noreferrer"
+            onclick="openExternal('${deepLink}',this)">Browse all California state grants &#8594;</a>
+       </div>`;
+
+    // Register for the Draft Generator, same as federal opportunities.
+    linked.slice(0, 12).forEach(r => {
+      const title = caGrantValue(r,'title');
+      if (!title) return;
+      const dl = caDeadlineInfo(r);
+      LIVE_GRANT_REGISTRY[title] = {
+        name: title,
+        funder: caGrantValue(r,'agency') || 'California State Agency',
+        amount: caGrantValue(r,'estAmounts') || caGrantValue(r,'estFunds') || '',
+        deadline: dl.text, deadlineSoon: dl.soon,
+        difficulty: 'Medium', type: 'state', isLive: true,
+        oppId: caGrantValue(r,'id'),
+        url: caGrantValue(r,'grantUrl') || caGrantValue(r,'agencyUrl')
+      };
+    });
+
+    console.log('[TMW-CA] \u2713 California section rendered with ' + Math.min(linked.length,12) + ' cards');
+    caSearchController = null;
+
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      console.log('[TMW-CA] previous California search aborted (superseded)');
+      return;
+    }
+    if (isStale()) return;
+    console.warn('[TMW-CA] \u2717 California fetch FAILED: ' + (err && err.message));
+    const deepLink = 'https://www.grants.ca.gov/?s=' + encodeURIComponent(keyword);
+    document.getElementById('ca-badge').textContent = '\u26A0\uFE0F UNAVAILABLE';
+    document.getElementById('ca-header-label').textContent =
+      'California state grants could not be loaded';
+    document.getElementById('ca-status').textContent = '';
+    document.getElementById('ca-results-inner').innerHTML = `
+      <div class="live-fallback-banner">
+        <div class="live-fallback-title">\u26A0\uFE0F California Grants Portal unavailable</div>
+        <div class="live-fallback-reason">${err && err.message ? err.message : 'unknown error'}</div>
+        <div class="live-fallback-cta">
+          Search the state database directly:
+          <a class="btn-live-apply" href="${deepLink}" target="_blank" rel="noopener noreferrer"
+             onclick="openExternal('${deepLink}',this)">&#8599; Search grants.ca.gov</a>
+        </div>
+      </div>`;
+    caSearchController = null;
+  }
+}
+
+/* Connectivity diagnostic. Run TMW_testCA() in the console.
+   Reports whether a DIRECT browser call to data.ca.gov succeeds, which is
+   the only way to establish the CORS answer with real evidence. */
+window.TMW_testCA = async function(){
+  const RES = '111c8c88-21f6-453c-ae2c-b4785a0624f5';
+  const direct = 'https://data.ca.gov/api/3/action/datastore_search?resource_id=' + RES + '&limit=1';
+  console.log('[TMW-CA-TEST] 1/2 attempting DIRECT browser call, no proxy:');
+  console.log('[TMW-CA-TEST]    ' + direct);
+  try {
+    const r = await fetch(direct);
+    const j = await r.json();
+    console.log('[TMW-CA-TEST] \u2713 DIRECT CALL SUCCEEDED. HTTP ' + r.status);
+    console.log('[TMW-CA-TEST]   CORS is permitted, a proxy is not strictly required.');
+    console.log('[TMW-CA-TEST]   success flag: ' + j.success +
+                ' | datastore enabled: ' + (j.success && j.result ? 'YES' : 'NO'));
+    if (j.result && j.result.fields) {
+      console.log('[TMW-CA-TEST]   fields: ' + j.result.fields.map(f=>f.id).join(', '));
+    }
+  } catch (e) {
+    console.warn('[TMW-CA-TEST] \u2717 DIRECT CALL BLOCKED: ' + e.message);
+    console.warn('[TMW-CA-TEST]   A CORS error here proves the serverless proxy is required.');
+  }
+  console.log('[TMW-CA-TEST] 2/2 attempting call via /api/ca-grants proxy:');
+  try {
+    const r2 = await fetch('/api/ca-grants', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ keyword:'education', limit:5 })
+    });
+    const j2 = await r2.json();
+    console.log('[TMW-CA-TEST] \u2713 PROXY SUCCEEDED. served via: ' + j2.source +
+                ' | returned ' + (j2.records ? j2.records.length : 0) +
+                ' of ' + j2.total + ' matches');
+    if (j2.records && j2.records.length) {
+      console.log('[TMW-CA-TEST]   sample: ' + j2.records[0].Title);
+      console.log('[TMW-CA-TEST]   ApplicantType: ' + j2.records[0].ApplicantType);
+      console.log('[TMW-CA-TEST]   GrantURL: ' + j2.records[0].GrantURL);
+    }
+  } catch (e2) {
+    console.error('[TMW-CA-TEST] \u2717 PROXY FAILED: ' + e2.message);
+  }
 };
 </script>
 
