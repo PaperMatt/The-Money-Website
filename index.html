@@ -3233,6 +3233,90 @@ const DP_SECTIONS=[
 ];
 let dpGrant=null;
 
+/* ── LIVE AI BRIDGE ──────────────────────────────────
+   Talks to /api/draft, which calls a real model through Vercel AI
+   Gateway. If that call fails the page falls back to the old template
+   text and says so out loud, so nobody mistakes a sample for a real
+   draft.
+────────────────────────────────────────────────── */
+const LIVE_FEEDBACK = {};
+
+function tmwProfilePayload(){
+  const g = dpGrant || {};
+  return {
+    district: cDistrict || '',
+    state: cState || '',
+    students: cStudents || '',
+    goal: cGoal || '',
+    needs: cNeeds || '',
+    grant: {
+      name: g.name || '',
+      funder: g.funder || '',
+      amount: g.amount || '',
+      deadline: g.deadline || '',
+      summary: g.summary || g.description || ''
+    }
+  };
+}
+
+async function tmwDraftApi(extra){
+  const payload = Object.assign(tmwProfilePayload(), extra);
+  const res = await fetch('/api/draft', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  let data = null;
+  try { data = await res.json(); } catch(e) { data = null; }
+  if (!res.ok || !data || data.ok === false) {
+    const msg = (data && data.error) ? data.error : ('Request failed with status ' + res.status);
+    console.warn('[TMW] /api/draft failed:', msg);
+    throw new Error(msg);
+  }
+  console.log('[TMW] /api/draft ok, mode=' + (data.mode||''), data.usage||'');
+  return data;
+}
+
+function tmwSourceBanner(state, detail){
+  const col = document.getElementById('dp-sections-col');
+  if (!col) return;
+  let el = document.getElementById('tmw-source-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'tmw-source-banner';
+    el.style.cssText = 'border-radius:10px;padding:.7rem .9rem;margin-bottom:1rem;font-size:.82rem;line-height:1.45;font-weight:600;';
+    col.insertBefore(el, col.firstChild);
+  }
+  if (state === 'loading') {
+    el.style.background = 'rgba(59,130,246,.12)';
+    el.style.color = '#3b82f6';
+    el.textContent = '\u2726 Writing your draft. This usually takes 20 to 40 seconds.';
+  } else if (state === 'live') {
+    el.style.background = 'rgba(34,197,94,.12)';
+    el.style.color = '#22c55e';
+    el.textContent = '\ud83d\udfe2 LIVE: written for your district by an AI model. Review every bracketed placeholder before you submit.';
+  } else {
+    el.style.background = 'rgba(245,158,11,.14)';
+    el.style.color = '#f59e0b';
+    el.textContent = '\u26a0\ufe0f SAMPLE: the AI writer could not be reached, so this is generic placeholder text. ' + (detail || '');
+  }
+}
+
+async function reviewSection(secId, quiet){
+  const ta = document.getElementById('ta-'+secId);
+  if (!ta || !ta.value.trim()) return;
+  const btn = document.getElementById('rev-'+secId);
+  if (btn && !quiet) { btn.disabled = true; btn.textContent = 'Reviewing\u2026'; }
+  try {
+    const r = await tmwDraftApi({mode:'feedback', section:secId, current:ta.value});
+    LIVE_FEEDBACK[secId] = Object.assign({}, r.feedback, {isLive:true});
+    buildFeedbackCol();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '\u21bb Review with AI Coach'; }
+    tmwSourceBanner('sample', e.message);
+  }
+}
+
 function buildFullDraft(g, district, state, students, goal, needs){
   const d=district||'the school district';
   const n=parseInt((students||'').replace(/,/g,''))||0;
@@ -3282,13 +3366,13 @@ All outcome data will be reported to ${g.funder} on a quarterly basis using stan
 function generateDraft(grantName){
   requireAccount('generateDraft', {grantName}, ()=>_doGenerateDraft(grantName));
 }
-function _doGenerateDraft(grantName){
+async function _doGenerateDraft(grantName){
   const allGrants=Object.values(GRANTS_DB).flat();
   const g = allGrants.find(x=>x.name===grantName)
          || LIVE_GRANT_REGISTRY[grantName]
          || {funder:'',amount:'',name:grantName,deadline:'',score:0,difficulty:'Medium'};
   dpGrant=g;
-  const draft=buildFullDraft(g,cDistrict,cState,cStudents,cGoal,cNeeds);
+  const draft={exec:'',need:'',proj:'',goals:'',out:''};
 
   // populate banner
   document.getElementById('dp-grant-name').textContent=g.name;
@@ -3371,6 +3455,27 @@ function _doGenerateDraft(grantName){
 
   goDraft();
   saveDraft(grantName, cGoal);
+
+  // Cards are on screen. Now fetch the real draft and fill them in.
+  tmwSourceBanner('loading');
+  DP_SECTIONS.forEach(s=>{ const ro=document.getElementById('ro-'+s.id); if(ro) ro.classList.add('active'); });
+
+  let texts=null, failure=null;
+  try{
+    const r=await tmwDraftApi({mode:'draft'});
+    texts=r.sections;
+  }catch(e){
+    failure=e.message;
+    texts=buildFullDraft(g,cDistrict,cState,cStudents,cGoal,cNeeds);
+  }
+
+  DP_SECTIONS.forEach(s=>{
+    const ta=document.getElementById('ta-'+s.id);
+    if(ta){ ta.value=(texts && texts[s.id]) || ''; autoHeight('ta-'+s.id); updateWC(s.id); }
+    const ro=document.getElementById('ro-'+s.id); if(ro) ro.classList.remove('active');
+  });
+  updateProgress();
+  tmwSourceBanner(failure ? 'sample' : 'live', failure);
 }
 
 /* ── AI FEEDBACK DATA ─────────────────────────────────────────── */
@@ -3535,7 +3640,7 @@ function buildFeedbackCol(){
   fcol.appendChild(spacer);
 
   DP_SECTIONS.forEach(sec=>{
-    const fb=FEEDBACK_DATA[sec.id];
+    const fb=LIVE_FEEDBACK[sec.id]||FEEDBACK_DATA[sec.id];
     if(!fb){ fcol.appendChild(document.createElement('div')); return; }
     const C=2*Math.PI*16;
     const offset=C*(1-(fb.score/100));
@@ -3548,7 +3653,7 @@ function buildFeedbackCol(){
       <div class="feedback-card-header">
         <div class="feedback-card-title">
           <div class="feedback-ai-dot"></div>
-          AI Coach · ${sec.name}
+          AI Coach · ${sec.name}${fb.isLive?' \u{1F7E2}':' (sample)'}
         </div>
         <div class="strength-ring-wrap">
           <div class="strength-ring">
@@ -3599,6 +3704,9 @@ function buildFeedbackCol(){
           <div class="suggested-edit-box">${fb.suggestion}</div>
         </div>
 
+        <button class="toolbar-btn" id="rev-${sec.id}" style="width:100%;justify-content:center;margin-bottom:.5rem;" onclick="reviewSection('${sec.id}')">
+          ↻ Review with AI Coach
+        </button>
         <button class="btn-improve" id="imp-${sec.id}" onclick="improveSection('${sec.id}')">
           ✦ Improve Draft
         </button>
@@ -3610,46 +3718,41 @@ function buildFeedbackCol(){
 function improveSection(secId){
   requireAccount('improve',{secId},()=>_doImproveSection(secId));
 }
-function _doImproveSection(secId){
+async function _doImproveSection(secId){
   const btn=document.getElementById('imp-'+secId);
   const ro=document.getElementById('ro-'+secId);
+  const ta=document.getElementById('ta-'+secId);
+  if(!ta||!btn) return;
+  const origHtml=btn.innerHTML;
   btn.classList.add('improving');
-  btn.innerHTML='<div class="regen-spinner" style="width:14px;height:14px;border-width:2px"></div> Improving…';
+  btn.innerHTML='<div class="regen-spinner" style="width:14px;height:14px;border-width:2px"></div> Improving\u2026';
   ro.classList.add('active');
 
-  setTimeout(()=>{
-    const fb=FEEDBACK_DATA[secId];
-    const ta=document.getElementById('ta-'+secId);
-    if(ta && fb && fb.improved){
-      ta.value=fb.improved;
-      autoHeight('ta-'+secId);
-      updateWC(secId);
-      document.getElementById('eb-'+secId).classList.add('visible');
-      document.getElementById('ib-'+secId).classList.add('show');
-      updateProgress();
-    }
-    ro.classList.remove('active');
-
-    // boost score
-    const newScore=Math.min(100,fb.score+18);
-    const C=2*Math.PI*16;
-    const offset=C*(1-(newScore/100));
-    const scoreColor=newScore>=80?'#22c55e':newScore>=65?'#f59e0b':'#ef4444';
-    const fillEl=document.getElementById('sf-'+secId);
-    const numEl=document.getElementById('sn-'+secId);
-    if(fillEl){ fillEl.setAttribute('stroke-dashoffset',offset.toFixed(2)); fillEl.setAttribute('stroke',scoreColor); }
-    if(numEl){ numEl.textContent=newScore; numEl.classList.add('score-recalc'); setTimeout(()=>numEl.classList.remove('score-recalc'),600); }
-
-    // update alignment pills to mostly strong
-    const pillWrap=document.querySelector(`#fbc-${secId} .alignment-pills`);
-    if(pillWrap){ pillWrap.querySelectorAll('.align-pill').forEach(p=>{ p.className='align-pill pill-strong'; p.textContent='✓ '+p.textContent.replace(/^[~✗✓]\s/,''); }); }
+  const fb=LIVE_FEEDBACK[secId]||FEEDBACK_DATA[secId]||{};
+  try{
+    const r=await tmwDraftApi({mode:'improve', section:secId, current:ta.value, notes:(fb.improve||[])});
+    ta.value=r.text||ta.value;
+    autoHeight('ta-'+secId);
+    updateWC(secId);
+    document.getElementById('eb-'+secId).classList.add('visible');
+    document.getElementById('ib-'+secId).classList.add('show');
+    updateProgress();
 
     btn.classList.remove('improving');
-    btn.innerHTML='✓ Section Improved';
+    btn.innerHTML='\u2713 Section Improved';
     btn.style.background='linear-gradient(135deg,var(--green) 0%,#16a34a 100%)';
     btn.style.boxShadow='0 3px 12px rgba(22,163,74,.3)';
     if(dpGrant) bumpDraftProgress(dpGrant.name,25);
-  },1600);
+
+    // Re-score the rewritten text instead of inventing a score bump.
+    reviewSection(secId, true);
+  }catch(e){
+    btn.classList.remove('improving');
+    btn.innerHTML=origHtml;
+    tmwSourceBanner('sample', e.message);
+  }finally{
+    ro.classList.remove('active');
+  }
 }
 
 function onTaInput(secId){
@@ -3684,25 +3787,28 @@ function copySection(secId,name){
   });
 }
 
-function regenSection(secId){
-  const g=dpGrant||{funder:'',amount:'',name:'',deadline:'',score:0,difficulty:'Medium'};
-  const draft=buildFullDraft(g,cDistrict,cState,cStudents,cGoal,cNeeds);
-  const texts={exec:draft.exec,need:draft.need,proj:draft.proj,goals:draft.goals,out:draft.out};
-
+async function regenSection(secId){
   const ro=document.getElementById('ro-'+secId);
   const btn=document.getElementById('regen-'+secId);
+  const ta=document.getElementById('ta-'+secId);
+  if(!ta) return;
   ro.classList.add('active'); btn.classList.add('spinning');
-  setTimeout(()=>{
-    const ta=document.getElementById('ta-'+secId);
-    // slight variation: shuffle sentence order in first paragraph
-    let newText=texts[secId]||'';
-    ta.value=newText;
+  try{
+    const r=await tmwDraftApi({mode:'section', section:secId, current:ta.value});
+    ta.value=r.text||ta.value;
+    tmwSourceBanner('live');
+  }catch(e){
+    const g=dpGrant||{funder:'',amount:'',name:'',deadline:'',score:0,difficulty:'Medium'};
+    const draft=buildFullDraft(g,cDistrict,cState,cStudents,cGoal,cNeeds);
+    ta.value=draft[secId]||ta.value;
+    tmwSourceBanner('sample', e.message);
+  }finally{
     autoHeight('ta-'+secId);
     updateWC(secId);
     document.getElementById('eb-'+secId).classList.remove('visible');
     ro.classList.remove('active'); btn.classList.remove('spinning');
     updateProgress();
-  },1400);
+  }
 }
 
 function buildSidebarNav(){
