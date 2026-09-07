@@ -815,7 +815,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 .dash-body { max-width:1100px; margin:0 auto; padding:2rem 2rem 5rem; }
 
 /* stats row */
-.dash-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1.25rem; margin-bottom:2rem; }
+.dash-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1.25rem; margin-bottom:2rem; }
 .dash-stat-card {
   background:white; border-radius:14px; border:1px solid var(--gray-200);
   padding:1.25rem 1.5rem; box-shadow:0 1px 6px rgba(0,0,0,.04);
@@ -942,7 +942,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 .dash-activity-summary strong { color:var(--navy); }
 
 .quick-actions-row {
-  display:grid; grid-template-columns:repeat(4,1fr); gap:1rem;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:1rem;
   margin-bottom:2rem;
 }
 .qa-btn {
@@ -1557,7 +1557,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
    profile describes an organisation, and they were previously split across a
    modal and a page with no way to move between them. */
 .profile-tabs {
-  display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.5rem;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1.75rem;
 }
 .profile-tab {
   display:flex; align-items:center; gap:.85rem; text-align:left;
@@ -4265,7 +4265,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 /* ── DASHBOARD ────────────────────────────────────────────────── */
 const GOAL_ICONS={STEM:'🔬',Technology:'💻','School Safety':'🛡️','Aspiring Teacher Pathways':'🌱','New Teacher Development':'🧑‍🏫','Professional Development':'👩‍🏫','Special Education':'♿',Athletics:'🏅',Arts:'🎨',Infrastructure:'🏗️'};
-const FUNDING_MAP={STEM:'$430K',Technology:'$300K','School Safety':'$1.2M','Aspiring Teacher Pathways':'$650K','New Teacher Development':'$550K','Professional Development':'$700K','Special Education':'$500K',Athletics:'$625K',Arts:'$110K',Infrastructure:'$2.1M'};
+// FUNDING_MAP was removed. It hardcoded a dollar figure per category, so a
+// STEM search always claimed "$430K identified" regardless of what was
+// actually found. Nothing on this page should assert a number we cannot
+// derive from real results.
 
 function buildDashboard(){
   if(!currentUser) return;
@@ -4290,34 +4293,12 @@ function buildDashboard(){
     summaryEl.innerHTML=`<strong>${districtLabel}</strong> has run <strong>${sCount} grant ${searchWord}</strong> and saved <strong>${dCount} ${draftWord}</strong> so far${lastGoal?`, with a recent focus on <strong>${lastGoal}</strong> funding`:''}.`;
   }
 
-  // Profile card
-  const initials=currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  document.getElementById('dash-avatar').textContent=initials;
-  document.getElementById('dash-profile-name').textContent=currentUser.name;
-  document.getElementById('dash-profile-role').textContent=currentUser.title+' · '+currentUser.email;
-  document.getElementById('dash-profile-district').textContent=districtLabel;
-  // District context, shown only when a District Profile has actually been saved.
-  const metaEl=document.getElementById('dash-profile-district-meta');
-  if(metaEl){
-    if(districtProfile){
-      const bits=[];
-      if(districtProfile.city && districtProfile.state) bits.push(districtProfile.city+', '+districtProfile.state);
-      else if(districtProfile.state) bits.push(districtProfile.state);
-      if(districtProfile.students) bits.push(parseInt(districtProfile.students).toLocaleString()+' students');
-      if(districtProfile.schools) bits.push(districtProfile.schools+' schools');
-      metaEl.innerHTML = bits.length ? bits.join(' &middot; ') : '';
-    } else {
-      metaEl.innerHTML='<a style="color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goProfile()">Add district details</a>';
-    }
-  }
+  // Account and district details now live on the Profile tabs, not here.
 
   // Stats
   document.getElementById('ds-searches').textContent=sCount;
   document.getElementById('ds-drafts').textContent=dCount;
-  document.getElementById('ps-searches').textContent=sCount;
-  document.getElementById('ps-drafts').textContent=dCount;
-  const lastGoalForFunding=sCount?accountData.searches[0].goal:'';
-  document.getElementById('ds-funding').textContent=FUNDING_MAP[lastGoalForFunding]||'$180K+';
+
 
   // Quick action: Continue Saved Draft button state
   const qaBtn=document.getElementById('qa-continue-draft');
@@ -5883,6 +5864,8 @@ function saveAccountDetails(){
     <div class="nav-breadcrumb">
       <span class="crumb-link" onclick="goHome()">Home</span>
       <span class="sep">›</span>
+      <span class="crumb-link" onclick="goAccount()">Profile</span>
+      <span class="sep">&rsaquo;</span>
       <span class="current">My Dashboard</span>
     </div>
     <div style="display:flex;align-items:center;gap:.75rem;">
@@ -5906,6 +5889,21 @@ function saveAccountDetails(){
 
 <div class="dash-body">
 
+  <div class="profile-tabs">
+    <button class="profile-tab" onclick="goAccount()">
+      <span class="profile-tab-icon">&#128100;</span>
+      <span><span class="profile-tab-title">My Account</span><span class="profile-tab-sub">You as an individual</span></span>
+    </button>
+    <button class="profile-tab" onclick="goProfile()">
+      <span class="profile-tab-icon">&#127979;</span>
+      <span><span class="profile-tab-title">District Profile</span><span class="profile-tab-sub">Your organisation</span></span>
+    </button>
+    <button class="profile-tab active" onclick="goDashboard()">
+      <span class="profile-tab-icon">&#128203;</span>
+      <span><span class="profile-tab-title">My Dashboard</span><span class="profile-tab-sub">Searches and drafts</span></span>
+    </button>
+  </div>
+
   <!-- STATS ROW -->
   <div class="dash-stats">
     <div class="dash-stat-card">
@@ -5919,10 +5917,6 @@ function saveAccountDetails(){
     <div class="dash-stat-card">
       <div class="dash-stat-icon ds-amber">⏰</div>
       <div class="dash-stat-info"><div class="dash-stat-num" id="ds-deadlines">3</div><div class="dash-stat-lbl">Upcoming Deadlines</div></div>
-    </div>
-    <div class="dash-stat-card">
-      <div class="dash-stat-icon ds-green">💰</div>
-      <div class="dash-stat-info"><div class="dash-stat-num" id="ds-funding">$0</div><div class="dash-stat-lbl">Est. Funding Identified</div></div>
     </div>
   </div>
 
@@ -5939,10 +5933,6 @@ function saveAccountDetails(){
     <button class="qa-btn" onclick="goProfile()">
       <div class="qa-icon ds-amber">🏫</div>
       <div class="qa-text"><div class="qa-title">Update District Profile</div><div class="qa-sub">Edit demographics, priorities &amp; needs</div></div>
-    </button>
-    <button class="qa-btn" onclick="openInvite()">
-      <div class="qa-icon ds-green">✉️</div>
-      <div class="qa-text"><div class="qa-title">Invite a Colleague</div><div class="qa-sub">Share this with your grant team</div></div>
     </button>
   </div>
 
@@ -5978,25 +5968,8 @@ function saveAccountDetails(){
     <!-- RIGHT COLUMN -->
     <div class="dash-col-side">
 
-      <!-- Profile card -->
-      <div class="profile-card">
-        <div class="profile-section-label">Your account</div>
-        <div class="profile-avatar" id="dash-avatar">?</div>
-        <div class="profile-name" id="dash-profile-name">-</div>
-        <div class="profile-role" id="dash-profile-role">-</div>
-        <div style="margin-top:.5rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goAccount()">Edit my account &#8594;</a></div>
-        <div class="profile-divider"></div>
-        <div class="profile-section-label">Your district</div>
-        <div class="profile-district-badge">🏫 <span id="dash-profile-district">-</span></div>
-        <div class="profile-district-meta" id="dash-profile-district-meta"></div>
-        <div style="margin-top:.6rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goProfile()">Edit full district profile →</a></div>
-        <div style="margin-top:.35rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="openInvite()">Invite a colleague →</a></div>
-        <button class="profile-card-signout" onclick="signOut()">↩ Sign out of this browser</button>
-        <div class="profile-stats">
-          <div class="profile-stat"><div class="profile-stat-num" id="ps-searches">0</div><div class="profile-stat-lbl">Searches</div></div>
-          <div class="profile-stat"><div class="profile-stat-num" id="ps-drafts">0</div><div class="profile-stat-lbl">Drafts</div></div>
-        </div>
-      </div>
+
+      <!-- Recommended Grants -->
 
       <!-- Recommended Grants -->
       <div class="dash-card">
@@ -6071,6 +6044,10 @@ function saveAccountDetails(){
     <button class="profile-tab active" onclick="goProfile()">
       <span class="profile-tab-icon">&#127979;</span>
       <span><span class="profile-tab-title">District Profile</span><span class="profile-tab-sub">Your organisation</span></span>
+    </button>
+    <button class="profile-tab" onclick="goDashboard()">
+      <span class="profile-tab-icon">&#128203;</span>
+      <span><span class="profile-tab-title">My Dashboard</span><span class="profile-tab-sub">Searches and drafts</span></span>
     </button>
   </div>
 
@@ -6502,6 +6479,10 @@ function saveAccountDetails(){
       <span class="profile-tab-icon">&#127979;</span>
       <span><span class="profile-tab-title">District Profile</span><span class="profile-tab-sub">Your organisation</span></span>
     </button>
+    <button class="profile-tab" onclick="goDashboard()">
+      <span class="profile-tab-icon">&#128203;</span>
+      <span><span class="profile-tab-title">My Dashboard</span><span class="profile-tab-sub">Searches and drafts</span></span>
+    </button>
   </div>
 
   <div class="profile-success-banner" id="account-success-banner">
@@ -6549,6 +6530,12 @@ function saveAccountDetails(){
       </div>
       <button class="btn-continue-search" style="flex:0 0 auto;min-width:0;padding:10px 20px;font-size:.88rem;" onclick="goProfile()">Open District Profile &#8594;</button>
     </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title">Your grant team</div>
+    <div class="form-card-sub">Share this with a colleague at your district. The message opens in your own email app, so it arrives from you.</div>
+    <button class="btn-continue-search" style="max-width:260px;" onclick="openInvite()">&#9993;&#65039; Invite a colleague</button>
   </div>
 
   <div class="profile-action-row">
