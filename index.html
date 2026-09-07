@@ -1553,6 +1553,40 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 .profile-district-meta {
   font-size:.75rem; color:rgba(255,255,255,.55); margin-top:.5rem; line-height:1.5;
 }
+/* Two profiles, one switcher. The account describes a person, the district
+   profile describes an organisation, and they were previously split across a
+   modal and a page with no way to move between them. */
+.profile-tabs {
+  display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.5rem;
+}
+.profile-tab {
+  display:flex; align-items:center; gap:.85rem; text-align:left;
+  background:white; border:1.5px solid var(--gray-200); border-radius:12px;
+  padding:1rem 1.25rem; cursor:pointer; transition:all .18s;
+  font-family:'DM Sans',sans-serif;
+}
+.profile-tab:hover { border-color:var(--blue-mid); }
+.profile-tab.active {
+  border-color:var(--blue); background:var(--blue-light);
+  box-shadow:0 2px 10px rgba(37,99,235,.08);
+}
+.profile-tab-icon { font-size:1.35rem; flex-shrink:0; }
+.profile-tab-title { display:block; font-size:.92rem; font-weight:700; color:var(--navy); }
+.profile-tab-sub   { display:block; font-size:.75rem; color:var(--gray-400); margin-top:1px; }
+.profile-tab.active .profile-tab-title { color:var(--blue); }
+
+.account-district-row {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  background:var(--gray-50); border:1px solid var(--gray-200);
+  border-radius:10px; padding:1.1rem 1.25rem; flex-wrap:wrap;
+}
+.account-district-name { font-size:.95rem; font-weight:700; color:var(--navy); }
+.account-district-meta { font-size:.8rem; color:var(--gray-500); margin-top:.2rem; line-height:1.5; }
+
+@media(max-width:640px){
+  .profile-tabs { grid-template-columns:1fr; }
+  .account-district-row { flex-direction:column; align-items:flex-start; }
+}
 </style>
 </head>
 <body>
@@ -1571,7 +1605,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
     <li><a onclick="scrollToSection('problem')">The Problem</a></li>
     <li><a onclick="scrollToSection('solution')">How It Works</a></li>
     <li><a onclick="scrollToSection('pilot')">Start a Pilot</a></li>
-    <li id="nav-profile-link" style="display:none"><a onclick="goProfile()">District Profile</a></li>
+    <li id="nav-profile-link" style="display:none"><a onclick="goAccount()">Profile</a></li>
     <li><button class="nav-signin-btn" id="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button><div class="nav-user-pill" id="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar" id="nav-user-avatar">?</div><span id="nav-user-name">Account</span></div></li>
     <li><a class="nav-cta" onclick="goSearch()">Get Started</a></li>
   </ul>
@@ -1810,7 +1844,7 @@ footer { background:var(--gray-50); border-top:1px solid var(--gray-200); paddin
 
 <script>
 /* ── PAGE NAVIGATION ──────────────────────────────────────────── */
-const PAGES=['page-home','page-search','page-draft','page-dashboard','page-profile','page-demo'];
+const PAGES=['page-home','page-search','page-draft','page-dashboard','page-profile','page-demo','page-account'];
 function showPage(id){
   PAGES.forEach(p=>document.getElementById(p).classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1822,6 +1856,7 @@ function goDraft()     { showPage('page-draft'); updateNavUser(); }
 function goDashboard() { buildDashboard(); showPage('page-dashboard'); updateNavUser(); }
 function goProfile()   { buildProfilePage(); showPage('page-profile'); updateNavUser(); }
 function goDemo()      { buildDemoPage();    showPage('page-demo');    updateNavUser(); }
+function goAccount()   { buildAccountPage(); showPage('page-account'); updateNavUser(); }
 function scrollToSection(id) {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior:'smooth' });
@@ -4054,7 +4089,15 @@ function openSignIn(){
   console.log('[TMW] Sign-in modal opened from nav');
 }
 
+/* Superseded by the My Account page. Kept as a redirect so any older entry
+   point still lands somewhere sensible instead of opening a modal that
+   duplicated a full page. */
 function openProfileModal(){
+  if(!currentUser){ openModal(); return; }
+  goAccount();
+}
+
+function _legacyOpenProfileModal(){
   if(!currentUser){ openModal(); return; }
   modalMode='edit';
   document.getElementById('modal-icon').textContent='✏️';
@@ -5569,6 +5612,84 @@ document.addEventListener('DOMContentLoaded', function(){
   const m = document.getElementById('invite-modal');
   if (m) m.addEventListener('click', function(e){ if (e.target === this) closeInvite(); });
 });
+
+/* ── MY ACCOUNT PAGE ──────────────────────────────────────────────────
+   The account is a PERSON: name, job title, email. The District Profile is
+   an ORGANISATION. Keeping them on separate tabs of the same screen makes
+   that distinction visible instead of splitting one across a modal and the
+   other across a full page. */
+function buildAccountPage(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+  if(currentUser){
+    set('acct-name',  currentUser.name);
+    set('acct-title', currentUser.title);
+    set('acct-email', currentUser.email);
+  }
+  const nameEl=document.getElementById('acct-district-name');
+  const metaEl=document.getElementById('acct-district-meta');
+  const d=districtName();
+  if(nameEl) nameEl.textContent = d || 'No district set';
+  if(metaEl){
+    if(districtProfile){
+      const bits=[];
+      if(districtProfile.city && districtProfile.state) bits.push(districtProfile.city+', '+districtProfile.state);
+      else if(districtProfile.state) bits.push(districtProfile.state);
+      if(districtProfile.students) bits.push(parseInt(districtProfile.students).toLocaleString()+' students');
+      if(districtProfile.schools)  bits.push(districtProfile.schools+' schools');
+      if(districtProfile.fundingPriorities && districtProfile.fundingPriorities.length)
+        bits.push(districtProfile.fundingPriorities.length+' funding priorities set');
+      metaEl.textContent = bits.length ? bits.join('  \u00b7  ') : 'District profile saved.';
+    } else if(d){
+      metaEl.textContent = 'Only the district name is set. Add demographics and priorities to improve matching.';
+    } else {
+      metaEl.textContent = 'Add your district details to improve grant matching.';
+    }
+  }
+  const banner=document.getElementById('account-success-banner');
+  if(banner) banner.classList.remove('show');
+  const err=document.getElementById('account-error');
+  if(err){ err.style.display='none'; err.textContent=''; }
+}
+
+function saveAccountDetails(){
+  const val=id=>{ const el=document.getElementById(id); return el?el.value.trim():''; };
+  const err=document.getElementById('account-error');
+  if(err){ err.style.display='none'; err.textContent=''; }
+
+  const name=val('acct-name'), title=val('acct-title'), email=val('acct-email');
+  const missing=[];
+  [['acct-name',name,'Full Name'],['acct-title',title,'Job Title'],['acct-email',email,'Work Email']]
+    .forEach(([id,v,label])=>{
+      const el=document.getElementById(id);
+      if(!v){ if(el) el.classList.add('err'); missing.push(label); }
+      else if(el) el.classList.remove('err');
+    });
+  if(email && email.indexOf('@')===-1){
+    const el=document.getElementById('acct-email');
+    if(el) el.classList.add('err');
+    missing.push('a valid Work Email');
+  }
+  if(missing.length){
+    if(err){ err.textContent='Please complete: '+missing.join(', ')+'.'; err.style.display='block'; }
+    return;
+  }
+
+  // Preserve the district association already on the account.
+  const existingDistrict = (currentUser && currentUser.district) || districtName() || '';
+  currentUser = { name:name, title:title, email:email, district:existingDistrict };
+  updateNavUser();
+  persistSession();
+  try { applyDistrictProfileToSearch(); } catch(e){}
+
+  const banner=document.getElementById('account-success-banner');
+  if(banner){
+    banner.classList.remove('show');
+    void banner.offsetWidth;
+    banner.classList.add('show');
+    banner.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  console.log('[TMW] Account details saved for '+name);
+}
 </script>
 
 <!-- ════════════════════════════════════════════════════
@@ -5863,6 +5984,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="profile-avatar" id="dash-avatar">?</div>
         <div class="profile-name" id="dash-profile-name">-</div>
         <div class="profile-role" id="dash-profile-role">-</div>
+        <div style="margin-top:.5rem;"><a style="font-size:.78rem;color:#93c5fd;cursor:pointer;text-decoration:underline;" onclick="goAccount()">Edit my account &#8594;</a></div>
         <div class="profile-divider"></div>
         <div class="profile-section-label">Your district</div>
         <div class="profile-district-badge">🏫 <span id="dash-profile-district">-</span></div>
@@ -5934,13 +6056,23 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <div class="page-header">
   <div class="page-header-inner">
-    <div class="page-badge">🏫 District Profile</div>
-    <h1>District Profile</h1>
-    <p>Set up your district once so every grant match and AI-generated draft reflects who you actually are.</p>
+    <h1>Profile</h1>
+    <p>Your personal details and your district's information are kept separate. Update either one below.</p>
   </div>
 </div>
 
 <div class="search-main">
+
+  <div class="profile-tabs">
+    <button class="profile-tab" onclick="goAccount()">
+      <span class="profile-tab-icon">&#128100;</span>
+      <span><span class="profile-tab-title">My Account</span><span class="profile-tab-sub">You as an individual</span></span>
+    </button>
+    <button class="profile-tab active" onclick="goProfile()">
+      <span class="profile-tab-icon">&#127979;</span>
+      <span><span class="profile-tab-title">District Profile</span><span class="profile-tab-sub">Your organisation</span></span>
+    </button>
+  </div>
 
   <!-- Success banner -->
   <div class="profile-success-banner" id="profile-success-banner">
@@ -6324,6 +6456,112 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
   </div>
 </div>
+
+
+<!-- ════════════ MY ACCOUNT ══════════════════════════════════════ -->
+<div id="page-account" class="page">
+
+<nav class="site-nav">
+  <div class="nav-logo" onclick="goHome()">
+    <div class="nav-logo-icon">$</div>
+    <span class="nav-logo-text">The Money Website</span>
+  </div>
+  <div class="nav-back-row">
+    <div class="nav-breadcrumb">
+      <span class="crumb-link" onclick="goHome()">Home</span>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">My Account</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="nav-signin-btn" onclick="openSignIn()">Sign In / Create Account</button>
+      <div class="nav-user-pill" onclick="goDashboard()"><div class="nav-user-avatar">?</div><span>Account</span></div>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+      <span class="nav-back-btn" onclick="goDashboard()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to Dashboard
+      </span>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>Profile</h1>
+    <p>Your personal details and your district's information are kept separate. Update either one below.</p>
+  </div>
+</div>
+
+<div class="search-main">
+
+  <div class="profile-tabs">
+    <button class="profile-tab active" onclick="goAccount()">
+      <span class="profile-tab-icon">&#128100;</span>
+      <span><span class="profile-tab-title">My Account</span><span class="profile-tab-sub">You as an individual</span></span>
+    </button>
+    <button class="profile-tab" onclick="goProfile()">
+      <span class="profile-tab-icon">&#127979;</span>
+      <span><span class="profile-tab-title">District Profile</span><span class="profile-tab-sub">Your organisation</span></span>
+    </button>
+  </div>
+
+  <div class="profile-success-banner" id="account-success-banner">
+    <span class="profile-success-icon">&#10003;</span>
+    <div>
+      <div class="profile-success-title">Account details saved.</div>
+      <div class="profile-success-text">Your name and role appear on drafts you generate.</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title">Your details</div>
+    <div class="form-card-sub">This is you, the person using the site. It is separate from your district's information.</div>
+
+    <div class="form-grid form-grid-2">
+      <div class="field">
+        <label for="acct-name">Full Name</label>
+        <input type="text" id="acct-name" placeholder="e.g. Matthew Robertson" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="acct-title">Job Title</label>
+        <input type="text" id="acct-title" placeholder="e.g. Grant Coordinator" autocomplete="organization-title">
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <div class="field">
+      <label for="acct-email">Work Email</label>
+      <input type="email" id="acct-email" placeholder="e.g. you@district.k12.ca.us" autocomplete="email">
+      <span class="field-hint">Used only to contact you about grant opportunities.</span>
+    </div>
+
+    <div class="modal-error" id="account-error"></div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title">Your district</div>
+    <div class="form-card-sub">Everything about your district lives on the District Profile tab, including demographics, funding priorities, and needs.</div>
+
+    <div class="account-district-row" id="acct-district-row">
+      <div class="account-district-info">
+        <div class="account-district-name" id="acct-district-name">No district set</div>
+        <div class="account-district-meta" id="acct-district-meta">Add your district details to improve grant matching.</div>
+      </div>
+      <button class="btn-continue-search" style="flex:0 0 auto;min-width:0;padding:10px 20px;font-size:.88rem;" onclick="goProfile()">Open District Profile &#8594;</button>
+    </div>
+  </div>
+
+  <div class="profile-action-row">
+    <button class="btn-save-profile" onclick="saveAccountDetails()">Save Account Details</button>
+    <button class="btn-continue-search" onclick="goProfile()">Go to District Profile &#8594;</button>
+  </div>
+
+  <div style="text-align:center;margin:1.5rem 0 2.5rem;">
+    <a style="font-size:.82rem;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="signOut()">Sign out of this browser</a>
+  </div>
+
+</div>
+</div><!-- /page-account -->
 
 <!-- DOWNLOAD TOAST -->
 <div class="dl-toast" id="dl-toast"></div>
